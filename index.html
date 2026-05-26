@@ -9,7 +9,7 @@
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
 
   <!-- Tailwind CSS -->
@@ -18,7 +18,7 @@
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
           colors: {
             palm: { 50: '#f2f7ec', 100: '#e1efd3', 500: '#639922', 700: '#3B6D11', 800: '#2d530d' },
             s1: '#e8f5e9', s1b: '#4caf50', s2: '#e3f2fd', s2b: '#2196f3',
@@ -86,19 +86,18 @@
     .chat-msg ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
   </style>
 </head>
-<body class="bg-gray-100/50 text-gray-900 antialiased min-h-screen pb-20">
+<body class="bg-gray-100/50 text-gray-900 antialiased min-h-screen pb-20 flex flex-col">
 
-<div class="max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8">
+<!-- Made fully fluid and edge-to-edge -->
+<div class="w-full flex-grow mx-auto p-4 sm:p-6 lg:p-8">
 
   <!-- Header -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
     <div class="flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm flex-shrink-0 border border-gray-100 overflow-hidden">
-        <img src="assets/clim-smart-op-icon.png" alt="Icon" class="w-full h-full object-contain p-1" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'ti ti-plant-2 text-2xl text-palm-700\'></i>';">
-      </div>
       <div>
-        <img src="assets/clim-smart-op-logo.png" alt="ClimSmart-OP" class="h-8 mb-1" onerror="this.onerror=null; this.outerHTML='<h1 class=\'text-2xl font-extrabold text-gray-900 tracking-tight\'>ClimSmart-OP Platform</h1>';">
-        <p class="text-sm text-gray-500 font-medium">Integrated Climate-Driven Platform for Adaptive Oil Palm Management</p>
+        <!-- Fixed duplicate logos -> simplified to main logo -->
+        <img src="assets/clim-smart-op-logo.png" alt="ClimSmart-OP" class="h-10 sm:h-12 mb-1 object-contain" onerror="this.onerror=null; this.outerHTML='<h1 class=\'text-2xl font-extrabold text-gray-900 tracking-tight\'>ClimSmart-OP Platform</h1>';">
+        <p class="text-sm text-gray-500 font-medium mt-1">Integrated Climate-Driven Platform for Adaptive Oil Palm Management</p>
       </div>
     </div>
     <div class="flex flex-wrap gap-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
@@ -191,8 +190,14 @@
       <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4"><i class="ti ti-cloud-upload text-3xl"></i></div>
       <h3 class="text-lg font-bold text-gray-800 mb-1">Upload APSIM Output Database</h3>
       <p class="text-sm text-gray-500 mb-4">Drag and drop an <code class="bg-gray-100 px-1 rounded text-xs">OilPalm.db</code> file here, or click to browse.</p>
-      <div class="text-xs font-semibold bg-gray-100 text-gray-500 px-3 py-1 rounded-full flex items-center gap-2">
+      
+      <div class="text-xs font-semibold bg-gray-100 text-gray-500 px-3 py-1 rounded-full flex items-center gap-2 mb-4">
         <i class="ti ti-lock"></i> Processed entirely in your browser via WebAssembly
+      </div>
+
+      <!-- Stop propagation here so clicking the link doesn't trigger the file upload -->
+      <div class="text-sm mt-2 text-gray-600" onclick="event.stopPropagation()">
+        Don't have a file? <a href="assets/OilPalm.db" download class="text-palm-700 font-semibold hover:underline border-b border-palm-200 pb-0.5"><i class="ti ti-download align-text-bottom"></i> Download a sample OilPalm.db</a>
       </div>
     </div>
 
@@ -599,7 +604,7 @@ function drawMF(canvasId, mfs, value, maxV) {
   mfs.forEach(mf => {
     ctx.beginPath(); ctx.strokeStyle = mf.color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
     for(let i=0; i<=100; i++){ const v = (i/100) * maxV, x = toX(v), y = toY(mf.fn(v)); i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); }
-    ctx.stroke(); ctx.font = '600 10px Inter, sans-serif'; ctx.fillStyle = mf.color;
+    ctx.stroke(); ctx.font = '600 10px Plus Jakarta Sans, sans-serif'; ctx.fillStyle = mf.color;
     ctx.fillText(mf.name.slice(0,6), pad + mfs.indexOf(mf)*(iW/(mfs.length-0.5)), H-2);
   });
   const vx = toX(value); ctx.setLineDash([4, 4]); ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(vx, pad); ctx.lineTo(vx, pad + iH); ctx.stroke(); ctx.setLineDash([]);
