@@ -1,0 +1,55 @@
+name: Daily APSIM Database Update
+
+# 1. Trigger the workflow daily at 2:00 AM UTC, and allow manual triggering
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+# Ensure the GitHub Action has permission to push code back to your repo
+permissions:
+  contents: write
+
+jobs:
+  run-apsim:
+    runs-on: ubuntu-latest # GitHub's free Linux server
+
+    steps:
+      # 1. Check out your repository code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Install .NET 8 (Required for ApsimX)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3. Download and Install the latest ApsimX Linux version
+      - name: Install ApsimX
+        run: |
+          wget https://apsimdev.apsim.info/ApsimXFiles/apsim-latest-ubuntu.deb
+          sudo apt-get update
+          sudo apt-get install -y ./apsim-latest-ubuntu.deb
+
+      # 4. (Optional) Run a script to update your weather .met file here
+      # - name: Update Weather Data
+      #   run: python3 scripts/update_weather.py
+
+      # 5. Run the APSIM Simulation headlessly
+      # IMPORTANT: Change 'assets/OilPalm.apsimx' to the actual path of your file
+      - name: Run Simulation
+        run: /opt/apsim/Models assets/OilPalm.apsimx
+
+      # 6. Commit the newly generated/updated .db file back to GitHub
+      - name: Commit and Push Updated DB
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Add the updated database (change path if necessary)
+          git add assets/OilPalm.db
+          git add assets/south_sumatra_oilpalm_seasonal_forecast.db
+          
+          # Only commit if there are actual changes
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update APSIM databases [skip ci]" && git push)
