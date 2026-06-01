@@ -37,9 +37,8 @@ jobs:
       #   run: python3 scripts/update_weather.py
 
       # 5. Run the APSIM Simulation headlessly
-      # IMPORTANT: Change 'assets/OilPalm.apsimx' to the actual path of your file
       - name: Run Simulation
-        run: /opt/apsim/Models assets/OilPalm.apsimx
+        run: /opt/apsim/Models assets/south_sumatra_oilpalm_seasonal_forecast.apsimx
 
       # 6. Commit the newly generated/updated .db file back to GitHub
       - name: Commit and Push Updated DB
