@@ -88,7 +88,9 @@
 </head>
 <body class="bg-gray-100/50 text-gray-900 antialiased min-h-screen pb-20 flex flex-col">
 
-<!-- Fully fluid container stretching edge-to-edge -->
+<!-- Floating Toast Container -->
+<div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
 <div class="w-full flex-grow mx-auto p-4 sm:p-6 lg:p-8">
 
   <!-- Header -->
@@ -178,18 +180,55 @@
   <!-- APSIM INTEGRATION -->
   <div id="tab-apsim" class="panel">
     <!-- Upload Area -->
-    <div id="upload-container" class="card upload-zone flex flex-col items-center justify-center py-12 mb-8 bg-white cursor-pointer relative" onclick="document.getElementById('db-upload').click()">
-      <input type="file" id="db-upload" accept=".db,.sqlite,.sqlite3" class="hidden" onchange="handleFileUpload(event)">
-      <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4"><i class="ti ti-cloud-upload text-3xl"></i></div>
-      <h3 class="text-lg font-bold text-gray-800 mb-1">Upload APSIM Output Database</h3>
-      <p class="text-sm text-gray-500 mb-4">Drag and drop an <code class="bg-gray-100 px-1 rounded text-xs">OilPalm.db</code> file here, or click to browse.</p>
-      
-      <div class="text-xs font-semibold bg-gray-100 text-gray-500 px-3 py-1 rounded-full flex items-center gap-2 mb-4">
-        <i class="ti ti-lock"></i> Processed entirely in your browser via WebAssembly
-      </div>
+    <div id="upload-container" class="mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Cloud DB Selection -->
+        <div class="card flex flex-col h-full">
+          <div class="flex items-center gap-2 mb-1">
+            <i class="ti ti-cloud-download text-palm-700 text-xl"></i>
+            <h3 class="text-lg font-bold text-gray-800">Cloud Databases</h3>
+          </div>
+          <p class="text-sm text-gray-500 mb-4">Select an available simulation database from the server.</p>
+          
+          <div class="flex flex-col gap-3 flex-grow">
+            <!-- Standard Database -->
+            <button onclick="loadDbFromUrl('https://raw.githubusercontent.com/ahmad-dhuha-habibullah/ClimSmartOP/5b6a5a6a4fdc46f5ace72b818e9495288706b6ee/assets/OilPalm.db', 'OilPalm', this)" class="text-left px-4 py-3 bg-gray-50 hover:bg-palm-50 border border-gray-200 hover:border-palm-400 rounded-xl transition-all group flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-white text-palm-600 shadow flex items-center justify-center group-hover:bg-palm-600 group-hover:text-white transition-colors"><i class="ti ti-database text-lg"></i></div>
+                <div>
+                  <div class="text-sm font-bold text-gray-800 group-hover:text-palm-800 btn-label">OilPalm</div>
+                  <div class="text-[10px] text-gray-500">Standard Simulation</div>
+                </div>
+              </div>
+              <i class="ti ti-arrow-right text-gray-400 group-hover:text-palm-600"></i>
+            </button>
 
-      <div class="text-sm mt-2 text-gray-600" onclick="event.stopPropagation()">
-        Don't have a file? <a href="assets/OilPalm.db" download class="text-palm-700 font-semibold hover:underline border-b border-palm-200 pb-0.5"><i class="ti ti-download align-text-bottom"></i> Download a sample OilPalm.db</a>
+            <!-- South Sumatra Seasonal Forecast Database (as referenced in verbatim) -->
+            <button onclick="loadDbFromUrl('https://raw.githubusercontent.com/ahmad-dhuha-habibullah/ClimSmartOP/5b6a5a6a4fdc46f5ace72b818e9495288706b6ee/assets/south_sumatra_oilpalm_seasonal_forecast.db', 'south_sumatra_oilpalm_seasonal_forecast', this)" class="text-left px-4 py-3 bg-gray-50 hover:bg-palm-50 border border-gray-200 hover:border-palm-400 rounded-xl transition-all group flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-white text-palm-600 shadow flex items-center justify-center group-hover:bg-palm-600 group-hover:text-white transition-colors"><i class="ti ti-database text-lg"></i></div>
+                <div class="overflow-hidden">
+                  <div class="text-sm font-bold text-gray-800 group-hover:text-palm-800 btn-label truncate max-w-[180px] sm:max-w-full">south_sumatra_oilpalm_seasonal_forecast</div>
+                  <div class="text-[10px] text-gray-500">Seasonal Forecast Resolution</div>
+                </div>
+              </div>
+              <i class="ti ti-arrow-right text-gray-400 group-hover:text-palm-600"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Manual Upload -->
+        <div id="manual-upload-zone" class="card upload-zone flex flex-col items-center justify-center py-12 bg-white cursor-pointer relative h-full transition-colors" onclick="document.getElementById('db-upload').click()">
+          <input type="file" id="db-upload" accept=".db,.sqlite,.sqlite3" class="hidden" onchange="handleFileUpload(event)">
+          <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4"><i class="ti ti-upload text-3xl"></i></div>
+          <h3 class="text-lg font-bold text-gray-800 mb-1">Custom Upload</h3>
+          <p class="text-sm text-gray-500 mb-4 text-center px-4">Have your own simulation? Drag and drop an APSIM SQLite file here.</p>
+          <div class="text-xs font-semibold bg-gray-100 text-gray-500 px-3 py-1 rounded-full flex items-center gap-2">
+            <i class="ti ti-lock"></i> Local WASM Processing
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -198,7 +237,7 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4">
         <div>
           <h2 class="text-xl font-bold text-gray-900">Simulation Results Overview</h2>
-          <p class="text-sm text-gray-500" id="db-file-name">Loaded: OilPalm.db</p>
+          <p class="text-sm text-gray-500 flex items-center gap-2" id="db-file-name">Loaded: -</p>
         </div>
         <button onclick="pushToDSS()" class="bg-palm-700 hover:bg-palm-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow flex items-center gap-2 transition ml-auto sm:ml-0">
           <i class="ti ti-arrow-right"></i> Send Latest Data to DSS
@@ -232,7 +271,7 @@
         
         <!-- Summary Quick Chart -->
         <div id="daily-chart-container" class="card mb-8 hidden">
-           <h3 class="section-title">Daily Summary (Rainfall & LAI)</h3>
+           <h3 class="section-title" id="daily-trend-title">Daily Summary (Rainfall & LAI)</h3>
            <div class="relative h-[250px] w-full"><canvas id="dailyChart"></canvas></div>
         </div>
 
@@ -252,13 +291,13 @@
          <div class="mb-4 bg-palm-50 border border-palm-100 p-4 rounded-xl text-sm text-palm-800 flex items-center gap-3">
            <i class="ti ti-chart-infographic text-2xl"></i>
            <div>
-             <strong>Comprehensive Diagnostic View</strong><br>
-             Below is a high-density, real-time plotting dashboard matching the simulation's daily outputs. The timeline runs sequentially from 2021 to 2026. 
+             <strong id="grid-instruction-title">Daily Diagnostic View</strong><br>
+             The timeline runs sequentially. 
            </div>
          </div>
 
          <!-- Downsampling Indicator -->
-         <div class="text-xs text-gray-500 mb-4 font-semibold flex items-center gap-1.5">
+         <div class="text-xs text-gray-500 mb-4 font-semibold flex items-center gap-1.5" id="grid-downsampling-status">
            <i class="ti ti-activity text-sm"></i>
            Downsampling applied gracefully (1 point per 5 days) to ensure instantaneous rendering.
          </div>
@@ -410,7 +449,7 @@
           <span id="dss-source-badge" class="hidden bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-200">Values linked from APSIM DB</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Water Deficit (mm)</label><div class="flex items-center gap-3"><input type="range" id="i-swd" min="0" max="150" step="1" value="55" class="slider flex-grow" oninput="updateInference()"><span id="i-swd-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">55</span></div></div>
+          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Soil Water Deficit (mm)</label><div class="flex items-center gap-3"><input type="range" id="i-swd" min="0" max="150" step="1" value="55" class="slider flex-grow" oninput="updateInference()"><span id="i-swd-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">55</span></div></div>
           <div><label class="block text-xs font-semibold text-gray-500 mb-2">Tr/Ep Ratio</label><div class="flex items-center gap-3"><input type="range" id="i-trep" min="0" max="100" step="1" value="60" class="slider flex-grow" oninput="updateInference()"><span id="i-trep-v" class="text-sm font-mono font-bold text-gray-700 w-10 text-right">0.60</span></div></div>
           <div><label class="block text-xs font-semibold text-gray-500 mb-2">LAI Output</label><div class="flex items-center gap-3"><input type="range" id="i-lai" min="0" max="85" step="1" value="38" class="slider flex-grow" oninput="updateInference()"><span id="i-lai-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">3.8</span></div></div>
           <div><label class="block text-xs font-semibold text-gray-500 mb-2">NDVI Index (Sat)</label><div class="flex items-center gap-3"><input type="range" id="i-ndvi" min="30" max="95" step="1" value="60" class="slider flex-grow" oninput="updateInference()"><span id="i-ndvi-v" class="text-sm font-mono font-bold text-gray-700 w-10 text-right">0.60</span></div></div>
@@ -534,8 +573,8 @@ function switchMainTab(id) {
 
 function switchSubTab(id) {
   document.querySelectorAll('.sub-tab').forEach(btn => btn.classList.remove('active'));
-  const targetSub = document.querySelector(`.sub-tab[onclick="switchSubTab('${id}')"]`);
-  if (targetSub) targetSub.classList.add('active');
+  const targetTab = document.querySelector(`.sub-tab[onclick="switchSubTab('${id}')"]`);
+  if (targetTab) targetTab.classList.add('active');
   document.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('sub-' + id).classList.add('active');
   
@@ -562,6 +601,32 @@ function switchApsimSubTab(subTabId) {
   }
 }
 
+// --- Toast Notification System ---
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 flex items-center gap-2 bg-white`;
+  
+  if (type === 'error') {
+    toast.className += ' border-red-200 text-red-800 bg-red-50';
+    toast.innerHTML = `<i class="ti ti-alert-circle text-lg text-red-600"></i> <span>${message}</span>`;
+  } else if (type === 'success') {
+    toast.className += ' border-green-200 text-green-800 bg-green-50';
+    toast.innerHTML = `<i class="ti ti-circle-check text-lg text-green-600"></i> <span>${message}</span>`;
+  } else {
+    toast.className += ' border-blue-200 text-blue-800 bg-blue-50';
+    toast.innerHTML = `<i class="ti ti-info-circle text-lg text-blue-600"></i> <span>${message}</span>`;
+  }
+  
+  container.appendChild(toast);
+  setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'translate-y-[-4px]');
+    setTimeout(() => toast.remove(), 300);
+  }, 4500);
+}
+
 // --- WASM DB Loading ---
 initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` })
   .then(function(init) {
@@ -571,13 +636,16 @@ initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1
     ind.classList.add('bg-blue-500');
     ind.parentElement.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> WASM DB Ready`;
   })
-  .catch(err => console.error("SQL.js Init Error:", err));
+  .catch(err => {
+    console.error("SQL.js Init Error:", err);
+    showToast("SQL WASM Engine failed to load.", "error");
+  });
 
 setTimeout(() => { switchMainTab('overview'); }, 100);
 
 // --- STREAMING_CHUNK: Processing Database File Uploads... ---
 // --- File Upload & Processing ---
-const dropZone = document.getElementById('upload-container');
+const dropZone = document.getElementById('manual-upload-zone');
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
 dropZone.addEventListener('drop', (e) => {
@@ -588,24 +656,58 @@ dropZone.addEventListener('drop', (e) => {
 function handleFileUpload(event) { if(event.target.files[0]) processFile(event.target.files[0]); }
 
 function processFile(file) {
-  if(!SQL) { alert("Please wait for the database engine to initialize."); return; }
-  document.getElementById('db-file-name').textContent = "Loaded: " + file.name;
+  if(!SQL) { showToast("Please wait for the database engine to initialize.", "error"); return; }
   
   const reader = new FileReader();
   reader.onload = function() {
     try {
       const db = new SQL.Database(new Uint8Array(reader.result));
-      analyzeAPSIMDatabase(db);
+      // Strip extension for presentation
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+      document.getElementById('db-file-name').textContent = nameWithoutExt;
+      analyzeAPSIMDatabase(db, nameWithoutExt);
     } catch(e) { 
       console.error(e);
-      alert("Error parsing database. Ensure it is a valid SQLite (.db) file from APSIM."); 
+      showToast("Error parsing database. Ensure it is a valid SQLite (.db) file from APSIM.", "error"); 
     }
   };
   reader.readAsArrayBuffer(file);
 }
 
+// --- Fetch Database From Cloud URL ---
+async function loadDbFromUrl(url, displayName, btnElement) {
+  if(!SQL) { showToast("Please wait for the database engine to initialize.", "error"); return; }
+  
+  // UI Loading State Feedback
+  const labelEl = btnElement.querySelector('.btn-label');
+  const originalText = labelEl.textContent;
+  const iconEl = btnElement.querySelector('.ti-database');
+  
+  labelEl.textContent = "Fetching...";
+  iconEl.classList.remove('ti-database');
+  iconEl.classList.add('ti-loader', 'animate-spin');
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const db = new SQL.Database(new Uint8Array(arrayBuffer));
+    
+    analyzeAPSIMDatabase(db, displayName);
+  } catch(e) { 
+    console.error("Error loading remote DB:", e);
+    showToast("Failed to fetch database from server: " + e.message, "error"); 
+  } finally {
+    // Revert UI Loading State
+    labelEl.textContent = originalText;
+    iconEl.classList.remove('ti-loader', 'animate-spin');
+    iconEl.classList.add('ti-database');
+  }
+}
+
 // --- STREAMING_CHUNK: Fetching Annual and High-Frequency Daily Tables... ---
-function analyzeAPSIMDatabase(db) {
+function analyzeAPSIMDatabase(db, displayName) {
   try {
     // 1. Process Annual Data (existing functionality)
     const query = `SELECT "Clock.Today.Year" as Year, "OilPalm.Age" as Age, "OilPalm.LAI" as LAI, "AnnualRain" as Rain, "Calculations.Script.AnnualYield" as Yield, "AnnualET" as ET FROM AnnualOutput ORDER BY "Clock.Today.Year" ASC`;
@@ -637,58 +739,76 @@ function analyzeAPSIMDatabase(db) {
 
     renderCharts(data);
 
-    // 2. Process Daily Data & Multi-plot Diagnostic Grid
-    analyzeDailyData(db);
+    // 2. Process High-frequency (Daily or Monthly) Data
+    const isMonthly = analyzeDailyOrMonthlyData(db, displayName);
 
-    apsimContextData = { years: `${years[0]}-${years[years.length-1]}`, avgYield, avgLAI, avgRain, latestYear: data[data.length-1] };
+    apsimContextData = { years: `${years[0]}-${years[years.length-1]}`, avgYield, avgLAI, avgRain, latestYear: data[data.length-1], isMonthly };
     document.getElementById('upload-container').classList.add('hidden');
     document.getElementById('analytics-dashboard').classList.remove('hidden');
 
+    showToast(`Successfully loaded ${displayName}! (${isMonthly ? 'Monthly' : 'Daily'} mode)`, "success");
     triggerAIUploadNotification();
   } catch(err) { 
     console.error(err);
-    alert("Could not process file: " + err.message); 
+    showToast("Could not process file: " + err.message, "error"); 
   }
 }
 
 // --- STREAMING_CHUNK: Decimating Daily Data for Grid Rendering... ---
-function analyzeDailyData(db) {
+function analyzeDailyOrMonthlyData(db, displayName) {
   try {
-    // Standardized check for daily tables
-    const tablesRes = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Report', 'Daily', 'DailyOutput')");
-    if (tablesRes.length === 0) return;
-    const dailyTable = tablesRes[0].values[0][0];
+    // Locate the high-frequency diagnostic output table
+    const tablesRes = db.exec(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' 
+      AND name NOT IN ('_Units', '_Checkpoints', '_Simulations', '_Messages', '_InitialConditions', 'AnnualOutput')
+      AND name NOT LIKE 'sqlite_%'
+    `);
+    if (tablesRes.length === 0) return false;
+    const targetTable = tablesRes[0].values[0][0];
 
-    // Grab daily variables matching standard OilPalm schema outputs
-    const query = `
-      SELECT 
-        "Clock.Today" as Date,
-        "OilPalm.Age" as Age,
-        "OilPalm.LAI" as LAI,
-        "Calculations.Script.AnnualFronds" as Fronds,
-        "Calculations.Script.AnnualBunches" as Bunches,
-        "Calculations.Script.AnnualYield" as AnnualYield,
-        "Calculations.Script.AnnualBunchSize" as BunchSize,
-        "OilPalm.HarvestFFB" as HarvestFFB,
-        "Weather.Rain" as Rain,
-        "Soil.SoilWater.Es" as Es,
-        "OilPalm.EP" as EP,
-        "OilPalm.UnderstoryEP" as UnderstoryEP,
-        "Soil.NO3.kgha(1)" as NO3_1,
-        "Soil.NO3.kgha(2)" as NO3_2,
-        "Soil.NO3.kgha(3)" as NO3_3,
-        "SurfaceOM.Wt" as OM_Wt,
-        "SurfaceOM.N" as OM_N,
-        "OilPalm.RootGrowth" as RootGrowth,
-        "OilPalm.StemGrowth" as StemGrowth,
-        "OilPalm.FrondGrowth" as FrondGrowth,
-        "OilPalm.BunchGrowth" as BunchGrowth
-      FROM "${dailyTable}" 
-      ORDER BY "Clock.Today" ASC
-    `;
-    
+    // Introspect table columns to construct a dynamically matched query
+    const colsRes = db.exec(`PRAGMA table_info("${targetTable}")`);
+    if (colsRes.length === 0) return false;
+    const columns = colsRes[0].values.map(v => v[1]);
+
+    const colMap = {
+      Date: ["Clock.Today", "Today", "Date"],
+      Age: ["OilPalm.Age", "Age", "OilPalm.Age"],
+      LAI: ["OilPalm.LAI", "LAI", "OilPalm.LAI"],
+      Fronds: ["Calculations.Script.AnnualFronds", "AnnualFronds", "Fronds"],
+      Bunches: ["Calculations.Script.AnnualBunches", "AnnualBunches", "Bunches"],
+      AnnualYield: ["Calculations.Script.AnnualYield", "AnnualYield", "Yield"],
+      BunchSize: ["Calculations.Script.AnnualBunchSize", "AnnualBunchSize", "BunchSize"],
+      HarvestFFB: ["OilPalm.HarvestFFB", "HarvestFFB", "HarvestFFB"],
+      Rain: ["Weather.Rain", "Rain", "Weather.Rain"],
+      Es: ["Soil.SoilWater.Es", "Es", "Soil.SoilWater.Es"],
+      EP: ["OilPalm.EP", "EP", "OilPalm.EP"],
+      UnderstoryEP: ["OilPalm.UnderstoryEP", "UnderstoryEP", "UnderstoryEP"],
+      NO3_1: ["Soil.NO3.kgha(1)", "Soil.NO3.kgha", "NO3_1"],
+      NO3_2: ["Soil.NO3.kgha(2)", "NO3_2"],
+      NO3_3: ["Soil.NO3.kgha(3)", "NO3_3"],
+      OM_Wt: ["SurfaceOM.Wt", "OM_Wt", "SurfaceOM.Wt"],
+      OM_N: ["SurfaceOM.N", "OM_N", "SurfaceOM.N"],
+      RootGrowth: ["OilPalm.RootGrowth", "RootGrowth", "RootGrowth"],
+      StemGrowth: ["OilPalm.StemGrowth", "StemGrowth", "StemGrowth"],
+      FrondGrowth: ["OilPalm.FrondGrowth", "FrondGrowth", "FrondGrowth"],
+      BunchGrowth: ["OilPalm.BunchGrowth", "BunchGrowth", "BunchGrowth"]
+    };
+
+    let selectFields = [];
+    for (const [key, aliases] of Object.entries(colMap)) {
+      const matched = aliases.find(alias => columns.includes(alias));
+      if (matched) {
+        selectFields.push(`"${matched}" as ${key}`);
+      } else {
+        selectFields.push(`NULL as ${key}`);
+      }
+    }
+
+    const query = `SELECT ${selectFields.join(', ')} FROM "${targetTable}" ORDER BY 1 ASC`;
     const res = db.exec(query);
-    if (res.length === 0) return;
+    if (res.length === 0) return false;
     
     const outCols = res[0].columns;
     const rawRows = res[0].values;
@@ -697,17 +817,74 @@ function analyzeDailyData(db) {
       let obj = {}; outCols.forEach((c, i) => obj[c] = row[i]); return obj;
     });
 
-    // Downsample gracefully to preserve plotting performance (1 point per 5 days)
-    const downsampledData = [];
-    for (let i = 0; i < data.length; i += 5) {
-      downsampledData.push(data[i]);
+    // Detect interval spacing (Monthly vs Daily)
+    let isMonthly = false;
+    if (data.length > 1) {
+      const d1 = new Date(data[0].Date);
+      const d2 = new Date(data[1].Date);
+      const diffDays = Math.abs(d2 - d1) / (1000 * 60 * 60 * 24);
+      // Spacing greater than 15 days indicates monthly reports
+      if (diffDays > 15 || targetTable.toLowerCase().includes('monthly')) {
+        isMonthly = true;
+      }
+    }
+
+    updateResolutionUI(isMonthly, displayName);
+
+    // Apply conditional downsampling (skip factor is 1 for Monthly outputs so we keep all density, 5 for Daily reports)
+    const skipFactor = isMonthly ? 1 : 5;
+    const processedData = [];
+    for (let i = 0; i < data.length; i += skipFactor) {
+      processedData.push(data[i]);
     }
     
-    renderDailyChart(downsampledData);
-    renderDailyMultiPlotGrid(downsampledData);
+    renderDailyChart(processedData, isMonthly);
+    renderDailyMultiPlotGrid(processedData, isMonthly);
 
+    return isMonthly;
   } catch(e) {
-    console.warn("Could not extract daily diagnostic details from database:", e);
+    console.warn("Could not extract diagnostic details from database:", e);
+    return false;
+  }
+}
+
+function updateResolutionUI(isMonthly, displayName) {
+  const mode = isMonthly ? "Monthly" : "Daily";
+
+  // Update Top Dashboard File Title + Resolution Badge
+  document.getElementById('db-file-name').innerHTML = `
+    Loaded: <span class="font-semibold text-gray-900">${displayName}</span>
+    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${isMonthly ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}">
+      ${mode} Data Mode
+    </span>
+  `;
+
+  // Update Secondary Tab labels
+  const gridTabBtn = document.getElementById('btn-tab-daily-grid');
+  if (gridTabBtn) {
+    gridTabBtn.innerHTML = `<i class="ti ti-grid-pattern mr-1 text-sm align-text-bottom"></i> ${mode} Multi-Plot Diagnostic Grid`;
+  }
+
+  // Update Grid Tab Instruction Card Header
+  const gridHeader = document.getElementById('grid-instruction-title');
+  if (gridHeader) {
+    gridHeader.textContent = `${mode} Diagnostic View`;
+  }
+
+  // Update Downsampling status text
+  const statusEl = document.getElementById('grid-downsampling-status');
+  if (statusEl) {
+    if (isMonthly) {
+      statusEl.innerHTML = `<i class="ti ti-activity text-sm text-indigo-500"></i> Monthly output interval detected. Visualization rendered 1:1 without downsampling.`;
+    } else {
+      statusEl.innerHTML = `<i class="ti ti-activity text-sm text-green-500"></i> Daily output interval detected. Decimating sequential timeline (1 point per 5 days) for instantaneous rendering.`;
+    }
+  }
+
+  // Update annual trend subset preview title
+  const dailyChartTitle = document.getElementById('daily-trend-title');
+  if (dailyChartTitle) {
+    dailyChartTitle.textContent = `${mode} Summary (Rainfall & LAI)`;
   }
 }
 
@@ -731,7 +908,7 @@ function renderCharts(data) {
   });
 }
 
-function renderDailyChart(data) {
+function renderDailyChart(data, isMonthly) {
   const container = document.getElementById('daily-chart-container');
   if (container) container.classList.remove('hidden');
 
@@ -751,7 +928,7 @@ function renderDailyChart(data) {
       labels, 
       datasets: [
         {
-          label: 'Daily Rain (mm)', 
+          label: isMonthly ? 'Monthly Rain (mm)' : 'Daily Rain (mm)', 
           data: rain, 
           type: 'bar', 
           backgroundColor: 'rgba(59, 130, 246, 0.4)', 
@@ -760,7 +937,7 @@ function renderDailyChart(data) {
           categoryPercentage: 1.0
         }, 
         {
-          label: 'Daily LAI', 
+          label: isMonthly ? 'Monthly LAI' : 'Daily LAI', 
           data: lais, 
           type: 'line', 
           borderColor: '#059669', 
@@ -786,16 +963,16 @@ function renderDailyChart(data) {
 }
 
 // --- STREAMING_CHUNK: Instantiating Grid Charts mimicking image_0d7a6b.jpg... ---
-// Render 20 subplots mirroring standard Daily diagnostics
-function renderDailyMultiPlotGrid(data) {
+// Render 20 subplots matching any high density daily/monthly diagnostics
+function renderDailyMultiPlotGrid(data, isMonthly) {
   const dates = data.map(d => {
     if (typeof d.Date === 'string') return d.Date.split(' ')[0];
     return d.Date;
   });
 
   const subplots = [
-    { key: 'age', title: 'Oil Palm Age', dataKey: 'Age', color: '#639922' },
-    { key: 'lai', title: 'Oil Palm LAI', dataKey: 'LAI', color: '#16a34a' },
+    { key: 'age', title: isMonthly ? 'Monthly Age' : 'Oil Palm Age', dataKey: 'Age', color: '#639922' },
+    { key: 'lai', title: isMonthly ? 'Monthly LAI' : 'Oil Palm LAI', dataKey: 'LAI', color: '#16a34a' },
     { key: 'fronds', title: 'Calculations.Script.AnnualFronds', dataKey: 'Fronds', color: '#2563eb' },
     { key: 'bunches', title: 'Calculations.Script.AnnualBunches', dataKey: 'Bunches', color: '#d97706' },
     { key: 'yield', title: 'Calculations.Script.AnnualYield', dataKey: 'AnnualYield', color: '#dc2626' },
@@ -1092,22 +1269,22 @@ function toggleChat() {
     notif.classList.add('hidden');
     document.getElementById('chat-input').focus();
   } else {
-    win.classList.remove('open'); win.classList.add('closed');
+    win.classList.remove('open'); win.classList.closed;
   }
 }
 
 function triggerAIUploadNotification() {
   if(isChatOpen) return;
   document.getElementById('chat-notif').classList.remove('hidden');
-  appendMessage('model', `I noticed you uploaded a new APSIM Database. The average annual yield across the simulation was **${apsimContextData.avgYield} t/ha** with average annual rainfall of **${apsimContextData.avgRain} mm**. 
+  appendMessage('model', `I noticed you uploaded a new APSIM Database (${apsimContextData.isMonthly ? 'Monthly Spacing' : 'Daily Spacing'}). The average annual yield across the simulation was **${apsimContextData.avgYield} t/ha** with average annual rainfall of **${apsimContextData.avgRain} mm**. 
   
-  I have also prepared the **Daily Multi-Plot Diagnostic Grid** containing the 20 subplots matching your APSIM results (Age, LAI, Weather Rain, EP transpiration, OM weight, and Root/Stem Growth rates). Would you like me to discuss these daily diagnostics?`);
+  I have prepared the **Multi-Plot Diagnostic Grid** containing the 20 subplots matching your APSIM results. Would you like me to discuss these diagnostics?`);
 }
 
 function getDynamicSystemPrompt() {
   let ctxStr = "Context: You are ClimSmart AI, an Agronomy and Modeling expert. Answer concisely in HTML format (<p>, <strong>, <ul><li>). DO NOT use markdown headers.";
   if (apsimContextData) {
-    ctxStr += `\n\n[APSIM DATABASE LOADED]\nSimulation Range: ${apsimContextData.years}, Avg Yield: ${apsimContextData.avgYield} t/ha, Avg LAI: ${apsimContextData.avgLAI}, Avg Rain: ${apsimContextData.avgRain} mm. A 20-subplot high-density daily diagnostics grid is rendered containing key soil water, transpiration, nitrogen leaching, OM weight, and palm growth components.`;
+    ctxStr += `\n\n[APSIM DATABASE LOADED]\nSimulation Range: ${apsimContextData.years}, Avg Yield: ${apsimContextData.avgYield} t/ha, Avg LAI: ${apsimContextData.avgLAI}, Avg Rain: ${apsimContextData.avgRain} mm. A 20-subplot high-density daily diagnostics grid is rendered containing key soil water, transpiration, nitrogen leaching, OM weight, and palm growth components. Mode: ${apsimContextData.isMonthly ? 'Monthly' : 'Daily'} Resolution.`;
   }
   const dssScore = document.getElementById('dss-score') ? document.getElementById('dss-score').textContent : 'N/A';
   ctxStr += `\n\n[DSS ENGINE STATE]\nCurrent Global DSS Score in Simulator: ${dssScore}.`;
