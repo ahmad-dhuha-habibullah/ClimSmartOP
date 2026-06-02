@@ -65,7 +65,10 @@
 
       .pipe-card { @apply rounded-xl p-4 border shadow-sm flex flex-col h-full bg-white; }
       .pipe-head { @apply text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2; }
-      .pipe-item { @apply bg-white/80 rounded-lg p-2.5 text-xs text-gray-700 mb-2 border border-black/5 flex items-start gap-2 shadow-sm; }
+      .pipe-item { @apply bg-white/80 rounded-lg p-2.5 text-xs text-gray-700 mb-2 border border-black/5 flex items-start gap-2 shadow-sm relative; }
+      .pipe-item-pending { @apply opacity-50 border-dashed bg-gray-50 grayscale; }
+      .badge-live { @apply absolute top-1 right-1 text-[8px] font-bold bg-green-100 text-green-700 px-1 py-0.5 rounded shadow-sm border border-green-200; }
+      .badge-pending { @apply absolute top-1 right-1 text-[8px] font-bold bg-gray-200 text-gray-500 px-1 py-0.5 rounded shadow-sm border border-gray-300; }
       
       .upload-zone { border: 2px dashed #d1d5db; transition: all 0.2s; }
       .upload-zone.dragover { border-color: #3B6D11; background-color: #f2f7ec; }
@@ -94,17 +97,28 @@
 <div class="w-full flex-grow mx-auto p-4 sm:p-6 lg:p-8">
 
   <!-- Header -->
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-    <div class="flex items-center gap-4">
-      <div>
-        <img src="assets/clim-smart-op-logo.png" alt="ClimSmart-OP" class="h-10 sm:h-12 mb-1 object-contain" onerror="this.onerror=null; this.outerHTML='<h1 class=\'text-2xl font-extrabold text-gray-900 tracking-tight\'>ClimSmart-OP Platform</h1>';">
-        <p class="text-sm text-gray-500 font-medium mt-1">Integrated Climate-Driven Platform for Adaptive Oil Palm Management</p>
-      </div>
+  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
+      <img src="assets/clim-smart-op-logo.png" alt="ClimSmart-OP" class="h-12 sm:h-14 object-contain shrink-0" onerror="this.onerror=null; this.outerHTML='<h1 class=\'text-2xl font-extrabold text-gray-900 tracking-tight\'>ClimSmart-OP Platform</h1>';">
+      <p class="text-sm sm:text-base text-gray-800 font-bold sm:border-l-2 sm:border-gray-200 sm:pl-5 leading-snug max-w-md">
+        Integrated Climate-Driven Platform for Adaptive Oil Palm Management
+      </p>
     </div>
-    <div class="flex flex-wrap gap-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 px-4 py-2 rounded-lg border border-gray-100">
+    <div class="flex flex-wrap gap-3 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 px-4 py-2 rounded-lg border border-gray-100 shrink-0">
       <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> APIs Live</div>
-      <div class="flex items-center gap-1.5"><span id="sql-status-indicator" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> WASM DB Engine</div>
+      <div class="flex items-center gap-1.5"><span id="sql-status-indicator" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Local DB Engine</div>
     </div>
+  </div>
+
+  <!-- Automation Status Bar -->
+  <div class="flex flex-col sm:flex-row justify-between items-center bg-gray-50 border border-gray-200 p-3 rounded-xl shadow-sm mb-6 gap-4">
+    <div class="flex flex-col sm:flex-row gap-4 sm:gap-8 text-xs sm:text-sm pl-2">
+      <div><i class="ti ti-activity text-blue-500 mr-1"></i><span class="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Action Status:</span> <span id="last-run-time" class="font-bold text-gray-800 ml-1">Fetching...</span> <span id="last-run-status" class="ml-1 text-gray-400"></span></div>
+      <div><i class="ti ti-database text-green-500 mr-1"></i><span class="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">DB Sync:</span> <span id="last-db-time" class="font-bold text-gray-800 ml-1">Fetching...</span></div>
+    </div>
+    <button id="trigger-cron-btn" onclick="triggerWorkflow(event)" class="w-full sm:w-auto bg-white border border-gray-300 text-gray-700 hover:text-palm-700 hover:border-palm-500 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2">
+      <i class="ti ti-player-play-filled text-palm-600"></i> Manual Override ApsimX Run
+    </button>
   </div>
 
   <!-- Main Navigation -->
@@ -113,64 +127,75 @@
       <i class="ti ti-layout-dashboard mr-1.5 text-lg align-text-bottom"></i> Platform Overview
     </button>
     <button class="main-tab" onclick="switchMainTab('apsim')">
-      <i class="ti ti-database-import mr-1.5 text-lg align-text-bottom"></i> APSIM Analytics
+      <i class="ti ti-database-import mr-1.5 text-lg align-text-bottom"></i> ApsimX Analytics
     </button>
     <button class="main-tab" onclick="switchMainTab('dss')">
       <i class="ti ti-brain mr-1.5 text-lg align-text-bottom"></i> DSS Engine
     </button>
     <button class="main-tab" onclick="switchMainTab('spatial')">
-      <i class="ti ti-map-2 mr-1.5 text-lg align-text-bottom"></i> Spatial & Actions
+      <i class="ti ti-map-2 mr-1.5 text-lg align-text-bottom"></i> Spatial & Actions (beta)
     </button>
   </div>
 
   <!-- PLATFORM OVERVIEW PANEL -->
   <div id="tab-overview" class="panel active">
-    <div class="mb-6">
-      <h2 class="text-lg font-bold text-gray-800 mb-2">End-to-End Operational Pipeline</h2>
-      <p class="text-sm text-gray-500">Live status of data ingestion, modeling, and automated downstream actions.</p>
+    <div class="mb-6 flex justify-between items-end">
+      <div>
+        <h2 class="text-lg font-bold text-gray-800 mb-1">Architecture & Implementation Status</h2>
+        <p class="text-sm text-gray-500">End-to-End Operational Pipeline showing live integrations and future roadmap modules.</p>
+      </div>
+      <div class="hidden sm:flex gap-3 text-xs font-bold">
+        <span class="flex items-center gap-1.5 text-gray-700"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Live</span>
+        <span class="flex items-center gap-1.5 text-gray-400"><span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span> Pending</span>
+      </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 lg:gap-6 min-h-[450px]">
       
+      <!-- Stage 1 -->
       <div class="pipe-card bg-s1/20 border-s1b/30">
-        <div class="pipe-head text-s1b"><i class="ti ti-database text-lg"></i> 1. Raw Data Ingestion</div>
-        <div class="pipe-item"><i class="ti ti-wifi text-s1b mt-0.5"></i> <div><strong>IoT Sensors</strong><br><span class="text-gray-500">Micro-weather, Soil moisture</span></div></div>
-        <div class="pipe-item"><i class="ti ti-cloud text-s1b mt-0.5"></i> <div><strong>BMKG API</strong><br><span class="text-gray-500">Local 3-day forecasts</span></div></div>
-        <div class="pipe-item"><i class="ti ti-world text-s1b mt-0.5"></i> <div><strong>ECMWF Forecasts</strong><br><span class="text-gray-500">Medium & Sub-seasonal</span></div></div>
-        <div class="pipe-item"><i class="ti ti-satellite text-s1b mt-0.5"></i> <div><strong>Sentinel-2</strong><br><span class="text-gray-500">NDVI / Crop Class</span></div></div>
-        <div class="mt-auto pt-3 border-t border-black/10"><div class="flex justify-between items-center text-[10px] font-bold text-gray-500"><span>ETL ENGINE</span> <span class="text-s1b">SYNCED</span></div></div>
+        <div class="pipe-head text-s1b"><i class="ti ti-database text-lg"></i> 1. Data Ingestion</div>
+        <div class="pipe-item border-green-200 shadow-sm border-l-4 border-l-green-500"><i class="ti ti-world text-s1b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">ECMWF Forecasts</strong><br><span class="text-gray-500">Historical & Future API</span></div><span class="badge-live">LIVE</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-cloud text-gray-400 mt-0.5 text-lg"></i> <div><strong>BMKG API</strong><br><span class="text-gray-400">Local 3-day resolution</span></div><span class="badge-pending">PENDING</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-wifi text-gray-400 mt-0.5 text-lg"></i> <div><strong>IoT Sensors</strong><br><span class="text-gray-400">Micro-weather telemetry</span></div><span class="badge-pending">PENDING</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-satellite text-gray-400 mt-0.5 text-lg"></i> <div><strong>Sentinel-2</strong><br><span class="text-gray-400">NDVI / Crop Mapping</span></div><span class="badge-pending">PENDING</span></div>
       </div>
 
+      <!-- Stage 2 -->
       <div class="pipe-card bg-s2/20 border-s2b/30">
         <div class="pipe-head text-s2b"><i class="ti ti-temperature text-lg"></i> 2. Climate Prep</div>
-        <div class="pipe-item"><i class="ti ti-calendar-stats text-s2b mt-0.5"></i> <div><strong>Short/Medium Model</strong><br><span class="text-gray-500">0-14 days aggregated</span></div></div>
-        <div class="pipe-item"><i class="ti ti-chart-line text-s2b mt-0.5"></i> <div><strong>Sub-seasonal Model</strong><br><span class="text-gray-500">2-6 weeks outlook</span></div></div>
-        <div class="pipe-item"><i class="ti ti-globe text-s2b mt-0.5"></i> <div><strong>Seasonal/Multi-year</strong><br><span class="text-gray-500">CMIP5/6 Projections</span></div></div>
-        <div class="mt-auto pt-3 border-t border-black/10"><div class="bg-s2b text-white text-xs font-bold rounded-md p-2 text-center shadow-sm">Generate .MET Files</div></div>
+        <div class="pipe-item border-blue-200 shadow-sm border-l-4 border-l-blue-500"><i class="ti ti-calendar-stats text-s2b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Short/Medium Model</strong><br><span class="text-gray-500">16-day dynamic horizon</span></div><span class="badge-live">LIVE</span></div>
+        <div class="pipe-item border-blue-200 shadow-sm border-l-4 border-l-blue-500"><i class="ti ti-globe text-s2b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Seasonal Forecast</strong><br><span class="text-gray-500">6-Month .MET generation</span></div><span class="badge-live">LIVE</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-chart-line text-gray-400 mt-0.5 text-lg"></i> <div><strong>Sub-seasonal</strong><br><span class="text-gray-400">Ensemble predictions</span></div><span class="badge-pending">PENDING</span></div>
       </div>
 
+      <!-- Stage 3 -->
       <div class="pipe-card bg-s3/20 border-s3b/30">
         <div class="pipe-head text-s3b"><i class="ti ti-leaf text-lg"></i> 3. Crop Modeling</div>
-        <div class="pipe-item"><i class="ti ti-settings text-s3b mt-0.5"></i> <div><strong>APSIM Config</strong><br><span class="text-gray-500">Soil & Initial Conditions</span></div></div>
-        <div class="my-3 text-center py-2 bg-white rounded-lg border border-s3b/20 shadow-sm"><div class="font-bold text-gray-800 tracking-wider">APSIM</div><div class="text-[10px] text-gray-500 uppercase">Batch Scheduling</div></div>
-        <div class="pipe-item"><i class="ti ti-player-play text-s3b mt-0.5"></i> <div><strong>Execution</strong><br><span class="text-gray-500">Daily update runs</span></div></div>
+        <div class="pipe-item border-purple-200 shadow-sm border-l-4 border-l-purple-500"><i class="ti ti-settings text-s3b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">ApsimX Config</strong><br><span class="text-gray-500">Soil & Crop Params</span></div><span class="badge-live">LIVE</span></div>
+        <div class="my-3 text-center py-2.5 bg-white rounded-lg border border-s3b/40 shadow-md relative overflow-hidden flex flex-col items-center justify-center min-h-[60px]">
+          <div class="absolute inset-0 bg-gradient-to-r from-s3/20 to-transparent"></div>
+          <img src="https://raw.githubusercontent.com/APSIMInitiative/ApsimX/9b1e6c5eac8de2326c8d0ff7e79d7e2319e39454/Docs/static/images/ApsimLogo.png" alt="ApsimX Logo" class="h-6 object-contain relative z-10 mb-1.5">
+          <div class="text-[10px] font-bold text-s3b uppercase relative z-10 leading-none">Oil Palm Simulation</div>
+        </div>
+        <div class="pipe-item border-purple-200 shadow-sm border-l-4 border-l-purple-500"><i class="ti ti-server-cog text-s3b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Automated Cron</strong><br><span class="text-gray-500">Remote Cloud Runs</span></div><span class="badge-live">LIVE</span></div>
         <div class="mt-auto pt-3 border-t border-black/10"><button onclick="switchMainTab('apsim')" class="w-full text-xs font-bold text-white bg-s3b hover:bg-purple-700 px-3 py-1.5 rounded-md transition-colors shadow-sm">Analyze DB Outputs &rarr;</button></div>
       </div>
 
-      <div class="pipe-card bg-s4/20 border-s4b/30 shadow-[0_0_15px_rgba(255,152,0,0.15)] relative">
-        <div class="absolute -top-3 -right-3 bg-s4b text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse shadow-md">ACTIVE</div>
+      <!-- Stage 4 -->
+      <div class="pipe-card bg-s4/20 border-s4b/30">
         <div class="pipe-head text-s4b"><i class="ti ti-brain text-lg"></i> 4. Decision Support</div>
-        <div class="pipe-item"><i class="ti ti-database-export text-s4b mt-0.5"></i> <div><strong>Data Extraction</strong><br><span class="text-gray-500">Read APSIM metrics</span></div></div>
-        <div class="pipe-item"><i class="ti ti-chart-area-line text-s4b mt-0.5"></i> <div><strong>Fuzzification</strong><br><span class="text-gray-500">Map to fuzzy sets</span></div></div>
-        <div class="pipe-item"><i class="ti ti-vector-bezier-2 text-s4b mt-0.5"></i> <div><strong>Interface Engine</strong><br><span class="text-gray-500">Evaluate fuzzy rules</span></div></div>
-        <div class="pipe-item"><i class="ti ti-math-function text-s4b mt-0.5"></i> <div><strong>Defuzzification</strong><br><span class="text-gray-500">Precise action scores</span></div></div>
+        <div class="pipe-item border-orange-200 shadow-sm border-l-4 border-l-orange-500"><i class="ti ti-database-export text-s4b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Data Extraction</strong><br><span class="text-gray-500">Parse DB metrics</span></div><span class="badge-live">LIVE</span></div>
+        <div class="pipe-item border-orange-200 shadow-sm border-l-4 border-l-orange-500"><i class="ti ti-chart-area-line text-s4b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Fuzzification</strong><br><span class="text-gray-500">Map fuzzy variables</span></div><span class="badge-live">LIVE</span></div>
+        <div class="pipe-item border-orange-200 shadow-sm border-l-4 border-l-orange-500"><i class="ti ti-vector-bezier-2 text-s4b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Inference Engine</strong><br><span class="text-gray-500">Evaluate fuzzy rules</span></div><span class="badge-live">LIVE</span></div>
         <div class="mt-auto pt-3 border-t border-black/10"><button onclick="switchMainTab('dss')" class="w-full text-xs font-bold text-white bg-s4b hover:bg-orange-600 px-3 py-1.5 rounded-md transition-colors shadow-sm">Open DSS Engine &rarr;</button></div>
       </div>
 
+      <!-- Stage 5 -->
       <div class="pipe-card bg-s5/20 border-s5b/30">
-        <div class="pipe-head text-s5b"><i class="ti ti-rocket text-lg"></i> 5. Actions</div>
-        <div class="pipe-item"><i class="ti ti-api text-s5b mt-0.5"></i> <div><strong>API Backend</strong><br><span class="text-gray-500">FastAPI RESTful endpoints</span></div></div>
-        <div class="pipe-item"><i class="ti ti-layout-dashboard text-s5b mt-0.5"></i> <div><strong>Web Dashboard</strong><br><span class="text-gray-500">Block overview & maps</span></div></div>
-        <div class="pipe-item"><i class="ti ti-device-gamepad text-s5b mt-0.5"></i> <div><strong>Edge Devices</strong><br><span class="text-gray-500">Trigger smart irrigation</span></div></div>
+        <div class="pipe-head text-s5b"><i class="ti ti-rocket text-lg"></i> 5. Actions (beta)</div>
+        <div class="pipe-item border-teal-200 shadow-sm border-l-4 border-l-teal-500"><i class="ti ti-layout-dashboard text-s5b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Web Dashboard</strong><br><span class="text-gray-500">Maps & Insights</span></div><span class="badge-live">LIVE</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-device-gamepad text-gray-400 mt-0.5 text-lg"></i> <div><strong>Edge Devices</strong><br><span class="text-gray-400">Trigger irrigation hardware</span></div><span class="badge-pending">PENDING</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-api text-gray-400 mt-0.5 text-lg"></i> <div><strong>API Backend</strong><br><span class="text-gray-400">RESTful action endpoints</span></div><span class="badge-pending">PENDING</span></div>
         <div class="mt-auto pt-3 border-t border-black/10"><button onclick="switchMainTab('spatial')" class="w-full text-xs font-bold text-white bg-s5b hover:bg-teal-700 px-3 py-1.5 rounded-md transition-colors shadow-sm">View Spatial Map &rarr;</button></div>
       </div>
 
@@ -185,32 +210,32 @@
         
         <!-- Cloud DB Selection -->
         <div class="card flex flex-col h-full">
-          <div class="flex items-center gap-2 mb-1">
-            <i class="ti ti-cloud-download text-palm-700 text-xl"></i>
+          <div class="flex items-center gap-3 mb-2">
+            <img src="https://raw.githubusercontent.com/APSIMInitiative/ApsimX/9b1e6c5eac8de2326c8d0ff7e79d7e2319e39454/Docs/static/images/ApsimLogo.png" alt="ApsimX Logo" class="h-6 object-contain">
             <h3 class="text-lg font-bold text-gray-800">Cloud Databases</h3>
           </div>
-          <p class="text-sm text-gray-500 mb-4">Select an available simulation database from the server.</p>
+          <p class="text-sm text-gray-500 mb-4">Select an available simulation database dynamically updated by Automated Cron.</p>
           
           <div class="flex flex-col gap-3 flex-grow">
             <!-- Standard Database -->
-            <button onclick="loadDbFromUrl('https://raw.githubusercontent.com/ahmad-dhuha-habibullah/ClimSmartOP/5b6a5a6a4fdc46f5ace72b818e9495288706b6ee/assets/OilPalm.db', 'Example: OilPalm', this)" class="text-left px-4 py-3 bg-gray-50 hover:bg-palm-50 border border-gray-200 hover:border-palm-400 rounded-xl transition-all group flex items-center justify-between">
+            <button onclick="loadDbFromUrl('https://raw.githubusercontent.com/ahmad-dhuha-habibullah/ClimSmartOP/main/assets/south_sumatra_oilpalm_daily_forecast.db', 'south_sumatra_oilpalm_daily_forecast', this)" class="text-left px-4 py-3 bg-gray-50 hover:bg-palm-50 border border-gray-200 hover:border-palm-400 rounded-xl transition-all group flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-white text-palm-600 shadow flex items-center justify-center group-hover:bg-palm-600 group-hover:text-white transition-colors"><i class="ti ti-database text-lg"></i></div>
-                <div>
-                  <div class="text-sm font-bold text-gray-800 group-hover:text-palm-800 btn-label">OilPalm</div>
-                  <div class="text-[10px] text-gray-500">Standard Simulation</div>
+                <div class="overflow-hidden">
+                  <div class="text-sm font-bold text-gray-800 group-hover:text-palm-800 btn-label truncate max-w-[180px] sm:max-w-full">south_sumatra_oilpalm_daily_forecast</div>
+                  <div class="text-[10px] text-gray-500">Standard 16-Day Simulation</div>
                 </div>
               </div>
               <i class="ti ti-arrow-right text-gray-400 group-hover:text-palm-600"></i>
             </button>
 
-            <!-- South Sumatra Seasonal Forecast Database (as referenced in verbatim) -->
-            <button onclick="loadDbFromUrl('https://raw.githubusercontent.com/ahmad-dhuha-habibullah/ClimSmartOP/5b6a5a6a4fdc46f5ace72b818e9495288706b6ee/assets/south_sumatra_oilpalm_seasonal_forecast.db', 'south_sumatra_oilpalm_seasonal_forecast', this)" class="text-left px-4 py-3 bg-gray-50 hover:bg-palm-50 border border-gray-200 hover:border-palm-400 rounded-xl transition-all group flex items-center justify-between">
+            <!-- Seasonal Forecast Database -->
+            <button onclick="loadDbFromUrl('https://raw.githubusercontent.com/ahmad-dhuha-habibullah/ClimSmartOP/main/assets/south_sumatra_oilpalm_seasonal_forecast.db', 'south_sumatra_oilpalm_seasonal_forecast', this)" class="text-left px-4 py-3 bg-gray-50 hover:bg-palm-50 border border-gray-200 hover:border-palm-400 rounded-xl transition-all group flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-white text-palm-600 shadow flex items-center justify-center group-hover:bg-palm-600 group-hover:text-white transition-colors"><i class="ti ti-database text-lg"></i></div>
                 <div class="overflow-hidden">
                   <div class="text-sm font-bold text-gray-800 group-hover:text-palm-800 btn-label truncate max-w-[180px] sm:max-w-full">south_sumatra_oilpalm_seasonal_forecast</div>
-                  <div class="text-[10px] text-gray-500">Seasonal Forecast Resolution</div>
+                  <div class="text-[10px] text-gray-500">6-Month Seasonal Forecast Resolution</div>
                 </div>
               </div>
               <i class="ti ti-arrow-right text-gray-400 group-hover:text-palm-600"></i>
@@ -223,9 +248,9 @@
           <input type="file" id="db-upload" accept=".db,.sqlite,.sqlite3" class="hidden" onchange="handleFileUpload(event)">
           <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4"><i class="ti ti-upload text-3xl"></i></div>
           <h3 class="text-lg font-bold text-gray-800 mb-1">Custom Upload</h3>
-          <p class="text-sm text-gray-500 mb-4 text-center px-4">Have your own simulation? Drag and drop an APSIM SQLite file here.</p>
+          <p class="text-sm text-gray-500 mb-4 text-center px-4">Have your own simulation? Drag and drop an ApsimX SQLite file here.</p>
           <div class="text-xs font-semibold bg-gray-100 text-gray-500 px-3 py-1 rounded-full flex items-center gap-2">
-            <i class="ti ti-lock"></i> Local WASM Processing
+            <i class="ti ti-lock"></i> Local DB Engine Processing
           </div>
         </div>
 
@@ -235,9 +260,15 @@
     <!-- Analytics Dashboard -->
     <div id="analytics-dashboard" class="hidden">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4">
-        <div>
-          <h2 class="text-xl font-bold text-gray-900">Simulation Results Overview</h2>
-          <p class="text-sm text-gray-500 flex items-center gap-2" id="db-file-name">Loaded: -</p>
+        <div class="flex items-center gap-4">
+          <img src="https://raw.githubusercontent.com/APSIMInitiative/ApsimX/9b1e6c5eac8de2326c8d0ff7e79d7e2319e39454/Docs/static/images/ApsimLogo.png" alt="ApsimX Logo" class="h-10 hidden sm:block object-contain">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Simulation Results Overview</h2>
+            <div class="flex items-center gap-3 mt-1">
+              <p class="text-sm text-gray-500 flex items-center gap-2" id="db-file-name">Loaded: -</p>
+              <button onclick="changeDatabase()" class="text-[10px] font-bold bg-gray-200 text-gray-600 hover:bg-gray-800 hover:text-white px-2 py-1 rounded transition-colors uppercase tracking-wider">Change Data</button>
+            </div>
+          </div>
         </div>
         <button onclick="pushToDSS()" class="bg-palm-700 hover:bg-palm-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow flex items-center gap-2 transition ml-auto sm:ml-0">
           <i class="ti ti-arrow-right"></i> Send Latest Data to DSS
@@ -286,7 +317,7 @@
         </div>
       </div>
 
-      <!-- SUB-PANEL: Daily Multi-Plot Grid Dashboard (Matching image_0d7a6b.jpg) -->
+      <!-- SUB-PANEL: Daily Multi-Plot Grid Dashboard -->
       <div id="sub-apsim-daily-grid" class="apsim-sub-panel hidden">
          <div class="mb-4 bg-palm-50 border border-palm-100 p-4 rounded-xl text-sm text-palm-800 flex items-center gap-3">
            <i class="ti ti-chart-infographic text-2xl"></i>
@@ -304,102 +335,82 @@
 
          <!-- 20 Subplots Responsive Grid -->
          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="daily-grid-wrapper">
-           <!-- Chart 1: Oil Palm Age -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Oil Palm Age</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-age"></canvas></div>
            </div>
-           <!-- Chart 2: Oil Palm LAI -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Oil Palm LAI</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-lai"></canvas></div>
            </div>
-           <!-- Chart 3: Annual Fronds -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualFronds</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-fronds"></canvas></div>
            </div>
-           <!-- Chart 4: Annual Bunches -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualBunches</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-bunches"></canvas></div>
            </div>
-           <!-- Chart 5: Annual Yield -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualYield</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-yield"></canvas></div>
            </div>
-           <!-- Chart 6: Annual Bunch Size -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualBunchSize</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-bunchsize"></canvas></div>
            </div>
-           <!-- Chart 7: Harvest FFB -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.HarvestFFB</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-harvestffb"></canvas></div>
            </div>
-           <!-- Chart 8: Weather Rain -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Weather.Rain</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-rain"></canvas></div>
            </div>
-           <!-- Chart 9: Soil Water Es -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.SoilWater.Es</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-es"></canvas></div>
            </div>
-           <!-- Chart 10: Oil Palm EP -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.EP</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-ep"></canvas></div>
            </div>
-           <!-- Chart 11: Oil Palm Understory EP -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.UnderstoryEP</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-understoryep"></canvas></div>
            </div>
-           <!-- Chart 12: Soil NO3 Layer 1 -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(1)</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_1"></canvas></div>
            </div>
-           <!-- Chart 13: Soil NO3 Layer 2 -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(2)</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_2"></canvas></div>
            </div>
-           <!-- Chart 14: Soil NO3 Layer 3 -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(3)</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_3"></canvas></div>
            </div>
-           <!-- Chart 15: Surface OM Wt -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">SurfaceOM.Wt</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-om_wt"></canvas></div>
            </div>
-           <!-- Chart 16: Surface OM N -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">SurfaceOM.N</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-om_n"></canvas></div>
            </div>
-           <!-- Chart 17: Root Growth -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.RootGrowth</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-rootgrowth"></canvas></div>
            </div>
-           <!-- Chart 18: Stem Growth -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.StemGrowth</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-stemgrowth"></canvas></div>
            </div>
-           <!-- Chart 19: Frond Growth -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.FrondGrowth</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-frondgrowth"></canvas></div>
            </div>
-           <!-- Chart 20: Bunch Growth -->
            <div class="card p-4 flex flex-col min-h-[220px]">
              <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.BunchGrowth</span>
              <div class="flex-grow mt-2 relative"><canvas id="gridChart-bunchgrowth"></canvas></div>
@@ -420,7 +431,7 @@
     <div id="sub-dss-thresholds" class="sub-panel active">
       <div class="mb-8 card-tight overflow-x-auto">
         <table class="data-table min-w-[800px]">
-          <thead class="bg-gray-100"><tr><th>APSIM Variable</th><th>Deficit (Critical)</th><th>Low</th><th>Optimal</th><th>High</th><th>Excess (Risk)</th></tr></thead>
+          <thead class="bg-gray-100"><tr><th>ApsimX Variable</th><th>Deficit (Critical)</th><th>Low</th><th>Optimal</th><th>High</th><th>Excess (Risk)</th></tr></thead>
           <tbody>
             <tr><td class="font-medium text-gray-900">Soil water deficit (mm)</td><td><span class="badge-critical">&gt; 80 mm</span></td><td><span class="badge-stressed">50–80 mm</span></td><td><span class="badge-optimal">0–30 mm</span></td><td><span class="text-gray-400 text-xs font-bold">—</span></td><td><span class="badge-critical">Saturated</span></td></tr>
             <tr><td class="font-medium text-gray-900">Transpiration ratio (Tr/Ep)</td><td><span class="badge-critical">&lt; 0.40</span></td><td><span class="badge-stressed">0.40–0.65</span></td><td><span class="badge-optimal">0.65–0.95</span></td><td><span class="badge-supra">0.95–1.0</span></td><td><span class="badge-critical">&gt; 1.0</span></td></tr>
@@ -446,7 +457,7 @@
       <div class="mb-6 card bg-white border-l-4 border-l-palm-600">
         <div class="flex justify-between items-center mb-4">
           <h3 class="section-title mb-0">Fuzzy Simulator Inputs</h3>
-          <span id="dss-source-badge" class="hidden bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-200">Values linked from APSIM DB</span>
+          <span id="dss-source-badge" class="hidden bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-200">Values linked from ApsimX DB</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           <div><label class="block text-xs font-semibold text-gray-500 mb-2">Soil Water Deficit (mm)</label><div class="flex items-center gap-3"><input type="range" id="i-swd" min="0" max="150" step="1" value="55" class="slider flex-grow" oninput="updateInference()"><span id="i-swd-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">55</span></div></div>
@@ -481,7 +492,7 @@
               <option value="gano">Ganoderma Risk</option>
             </select>
             <button onclick="regenerateEstate()" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm">
-              <i class="ti ti-refresh mr-1 text-xs"></i> Sync APSIM DB
+              <i class="ti ti-refresh mr-1 text-xs"></i> Sync ApsimX DB
             </button>
           </div>
         </div>
@@ -500,7 +511,7 @@
       <h3 class="section-title">Automated API Dispatch Log</h3>
       <div class="card-tight overflow-x-auto">
         <table class="data-table min-w-[900px]">
-          <thead class="bg-gray-100"><tr><th>Block ID</th><th>Yield Est.</th><th>APSIM SWD</th><th>DSS Score</th><th>Condition</th><th>Dispatched Action (Edge API)</th><th>Status</th></tr></thead>
+          <thead class="bg-gray-100"><tr><th>Block ID</th><th>Yield Est.</th><th>ApsimX SWD</th><th>DSS Score</th><th>Condition</th><th>Dispatched Action (Edge API)</th><th>Status</th></tr></thead>
           <tbody id="batch-table"></tbody>
         </table>
       </div>
@@ -544,6 +555,22 @@
   </button>
 </div>
 
+<!-- FAKE LOGIN / ADMIN AUTHORIZATION MODAL -->
+<div id="admin-modal" class="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 hidden opacity-0 transition-opacity duration-300">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-full bg-palm-100 flex items-center justify-center text-palm-700"><i class="ti ti-lock text-xl"></i></div>
+      <h3 class="text-lg font-bold text-gray-900">Admin Authorization</h3>
+    </div>
+    <p class="text-sm text-gray-500 mb-4">Please enter the administrative key to securely trigger manual ApsimX runs.</p>
+    <input type="password" id="admin-key-input" class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-6 focus:ring-2 focus:ring-palm-500 outline-none text-sm" placeholder="Enter Admin Key" onkeydown="if(event.key==='Enter') submitAdminModal()">
+    <div class="flex justify-end gap-3">
+      <button onclick="closeAdminModal()" class="px-4 py-2 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+      <button onclick="submitAdminModal()" class="px-4 py-2 bg-palm-700 hover:bg-palm-800 text-white text-sm font-bold rounded-lg shadow-sm transition-colors">Authorize & Run</button>
+    </div>
+  </div>
+</div>
+
 <!-- JAVASCRIPT LOGIC -->
 <script>
 let SQL = null;
@@ -555,8 +582,6 @@ let estateBlocks = null;
 let yieldChartInstance = null;
 let laiChartInstance = null;
 let dailyChartInstance = null; 
-
-// Grid layout chart instances mapped to keys
 let dailyGridCharts = {};
 
 // --- STREAMING_CHUNK: Managing Sub-Navigation Tab States... ---
@@ -582,7 +607,6 @@ function switchSubTab(id) {
   if (id === 'dss-inference') setTimeout(updateInference, 50);
 }
 
-// APSIM Internal Sub-panel navigation
 function switchApsimSubTab(subTabId) {
   document.querySelectorAll('.apsim-sub-panel').forEach(panel => panel.classList.add('hidden'));
   
@@ -599,6 +623,12 @@ function switchApsimSubTab(subTabId) {
     document.getElementById('sub-apsim-daily-grid').classList.remove('hidden');
     dailyBtn.className = "px-4 py-2 text-xs font-semibold rounded-lg transition-all text-palm-800 bg-palm-50 shadow-sm border border-palm-100";
   }
+}
+
+// Function to smoothly change DBs without refreshing
+function changeDatabase() {
+  document.getElementById('analytics-dashboard').classList.add('hidden');
+  document.getElementById('upload-container').classList.remove('hidden');
 }
 
 // --- Toast Notification System ---
@@ -634,7 +664,7 @@ initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1
     const ind = document.getElementById('sql-status-indicator');
     ind.classList.remove('bg-amber-500', 'animate-pulse');
     ind.classList.add('bg-blue-500');
-    ind.parentElement.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> WASM DB Ready`;
+    ind.parentElement.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span> Local DB Engine Ready`;
   })
   .catch(err => {
     console.error("SQL.js Init Error:", err);
@@ -643,7 +673,6 @@ initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1
 
 setTimeout(() => { switchMainTab('overview'); }, 100);
 
-// --- STREAMING_CHUNK: Processing Database File Uploads... ---
 // --- File Upload & Processing ---
 const dropZone = document.getElementById('manual-upload-zone');
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -662,23 +691,20 @@ function processFile(file) {
   reader.onload = function() {
     try {
       const db = new SQL.Database(new Uint8Array(reader.result));
-      // Strip extension for presentation
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
       document.getElementById('db-file-name').textContent = nameWithoutExt;
       analyzeAPSIMDatabase(db, nameWithoutExt);
     } catch(e) { 
       console.error(e);
-      showToast("Error parsing database. Ensure it is a valid SQLite (.db) file from APSIM.", "error"); 
+      showToast("Error parsing database. Ensure it is a valid SQLite (.db) file from ApsimX.", "error"); 
     }
   };
   reader.readAsArrayBuffer(file);
 }
 
-// --- Fetch Database From Cloud URL ---
 async function loadDbFromUrl(url, displayName, btnElement) {
   if(!SQL) { showToast("Please wait for the database engine to initialize.", "error"); return; }
   
-  // UI Loading State Feedback
   const labelEl = btnElement.querySelector('.btn-label');
   const originalText = labelEl.textContent;
   const iconEl = btnElement.querySelector('.ti-database');
@@ -688,7 +714,13 @@ async function loadDbFromUrl(url, displayName, btnElement) {
   iconEl.classList.add('ti-loader', 'animate-spin');
 
   try {
-    const response = await fetch(url);
+    let response = await fetch(url);
+    if (response.status === 404 && url.includes('/main/')) {
+      console.warn("404 on 'main' branch. Falling back to 'master' branch...");
+      const masterUrl = url.replace('/main/', '/master/');
+      response = await fetch(masterUrl);
+    }
+
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     
     const arrayBuffer = await response.arrayBuffer();
@@ -697,19 +729,16 @@ async function loadDbFromUrl(url, displayName, btnElement) {
     analyzeAPSIMDatabase(db, displayName);
   } catch(e) { 
     console.error("Error loading remote DB:", e);
-    showToast("Failed to fetch database from server: " + e.message, "error"); 
+    showToast("Database not found (404). Please verify that the Automated Cron has successfully completed.", "error"); 
   } finally {
-    // Revert UI Loading State
     labelEl.textContent = originalText;
     iconEl.classList.remove('ti-loader', 'animate-spin');
     iconEl.classList.add('ti-database');
   }
 }
 
-// --- STREAMING_CHUNK: Fetching Annual and High-Frequency Daily Tables... ---
 function analyzeAPSIMDatabase(db, displayName) {
   try {
-    // 1. Process Annual Data (existing functionality)
     const query = `SELECT "Clock.Today.Year" as Year, "OilPalm.Age" as Age, "OilPalm.LAI" as LAI, "AnnualRain" as Rain, "Calculations.Script.AnnualYield" as Yield, "AnnualET" as ET FROM AnnualOutput ORDER BY "Clock.Today.Year" ASC`;
     const res = db.exec(query);
     if(res.length === 0) throw new Error("AnnualOutput table is empty.");
@@ -739,7 +768,6 @@ function analyzeAPSIMDatabase(db, displayName) {
 
     renderCharts(data);
 
-    // 2. Process High-frequency (Daily or Monthly) Data
     const isMonthly = analyzeDailyOrMonthlyData(db, displayName);
 
     apsimContextData = { years: `${years[0]}-${years[years.length-1]}`, avgYield, avgLAI, avgRain, latestYear: data[data.length-1], isMonthly };
@@ -754,10 +782,8 @@ function analyzeAPSIMDatabase(db, displayName) {
   }
 }
 
-// --- STREAMING_CHUNK: Decimating Daily Data for Grid Rendering... ---
 function analyzeDailyOrMonthlyData(db, displayName) {
   try {
-    // Locate the high-frequency diagnostic output table
     const tablesRes = db.exec(`
       SELECT name FROM sqlite_master 
       WHERE type='table' 
@@ -767,7 +793,6 @@ function analyzeDailyOrMonthlyData(db, displayName) {
     if (tablesRes.length === 0) return false;
     const targetTable = tablesRes[0].values[0][0];
 
-    // Introspect table columns to construct a dynamically matched query
     const colsRes = db.exec(`PRAGMA table_info("${targetTable}")`);
     if (colsRes.length === 0) return false;
     const columns = colsRes[0].values.map(v => v[1]);
@@ -817,13 +842,11 @@ function analyzeDailyOrMonthlyData(db, displayName) {
       let obj = {}; outCols.forEach((c, i) => obj[c] = row[i]); return obj;
     });
 
-    // Detect interval spacing (Monthly vs Daily)
     let isMonthly = false;
     if (data.length > 1) {
       const d1 = new Date(data[0].Date);
       const d2 = new Date(data[1].Date);
       const diffDays = Math.abs(d2 - d1) / (1000 * 60 * 60 * 24);
-      // Spacing greater than 15 days indicates monthly reports
       if (diffDays > 15 || targetTable.toLowerCase().includes('monthly')) {
         isMonthly = true;
       }
@@ -831,7 +854,6 @@ function analyzeDailyOrMonthlyData(db, displayName) {
 
     updateResolutionUI(isMonthly, displayName);
 
-    // Apply conditional downsampling (skip factor is 1 for Monthly outputs so we keep all density, 5 for Daily reports)
     const skipFactor = isMonthly ? 1 : 5;
     const processedData = [];
     for (let i = 0; i < data.length; i += skipFactor) {
@@ -851,7 +873,6 @@ function analyzeDailyOrMonthlyData(db, displayName) {
 function updateResolutionUI(isMonthly, displayName) {
   const mode = isMonthly ? "Monthly" : "Daily";
 
-  // Update Top Dashboard File Title + Resolution Badge
   document.getElementById('db-file-name').innerHTML = `
     Loaded: <span class="font-semibold text-gray-900">${displayName}</span>
     <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${isMonthly ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-green-50 text-green-700 border border-green-200'}">
@@ -859,19 +880,16 @@ function updateResolutionUI(isMonthly, displayName) {
     </span>
   `;
 
-  // Update Secondary Tab labels
   const gridTabBtn = document.getElementById('btn-tab-daily-grid');
   if (gridTabBtn) {
     gridTabBtn.innerHTML = `<i class="ti ti-grid-pattern mr-1 text-sm align-text-bottom"></i> ${mode} Multi-Plot Diagnostic Grid`;
   }
 
-  // Update Grid Tab Instruction Card Header
   const gridHeader = document.getElementById('grid-instruction-title');
   if (gridHeader) {
     gridHeader.textContent = `${mode} Diagnostic View`;
   }
 
-  // Update Downsampling status text
   const statusEl = document.getElementById('grid-downsampling-status');
   if (statusEl) {
     if (isMonthly) {
@@ -881,14 +899,12 @@ function updateResolutionUI(isMonthly, displayName) {
     }
   }
 
-  // Update annual trend subset preview title
   const dailyChartTitle = document.getElementById('daily-trend-title');
   if (dailyChartTitle) {
     dailyChartTitle.textContent = `${mode} Summary (Rainfall & LAI)`;
   }
 }
 
-// --- STREAMING_CHUNK: Drawing High-Level Annual Charts... ---
 function renderCharts(data) {
   const labels = data.map(d => d.Year), yields = data.map(d => d.Yield), rain = data.map(d => d.Rain), lais = data.map(d => d.LAI);
   const ctxY = document.getElementById('yieldChart').getContext('2d');
@@ -962,8 +978,6 @@ function renderDailyChart(data, isMonthly) {
   });
 }
 
-// --- STREAMING_CHUNK: Instantiating Grid Charts mimicking image_0d7a6b.jpg... ---
-// Render 20 subplots matching any high density daily/monthly diagnostics
 function renderDailyMultiPlotGrid(data, isMonthly) {
   const dates = data.map(d => {
     if (typeof d.Date === 'string') return d.Date.split(' ')[0];
@@ -997,7 +1011,6 @@ function renderDailyMultiPlotGrid(data, isMonthly) {
     const canvas = document.getElementById(`gridChart-${plot.key}`);
     if (!canvas) return;
 
-    // Clear old instance
     if (dailyGridCharts[plot.key]) {
       dailyGridCharts[plot.key].destroy();
     }
@@ -1058,8 +1071,6 @@ function pushToDSS() {
   document.getElementById('dss-source-badge').classList.remove('hidden');
 }
 
-// --- STREAMING_CHUNK: Configuring Fuzzy Inference Logic Triggers... ---
-// --- Fuzzy Logic DSS Engine ---
 function trap(x, a, b, c, d) { if (x <= a || x >= d) return 0; if (x >= b && x <= c) return 1; if (x < b) return (x - a) / (b - a); return (d - x) / (d - c); }
 function tri(x, a, b, c) { if (x <= a || x >= c) return 0; if (x === b) return 1; if (x < b) return (x - a) / (b - a); return (c - x) / (c - b); }
 
@@ -1164,8 +1175,6 @@ function updateInference() {
   }).join('') : '<div class="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg border text-center">No rules fired above threshold.</div>';
 }
 
-// --- STREAMING_CHUNK: Simulating Spatial and downstream Edge APIs... ---
-// --- Spatial Batch Logic ---
 function rnd(a,b) { return Math.round(a + (b - a) * Math.random()); }
 function rndf(a,b,dec) { return parseFloat((a + (b - a) * Math.random()).toFixed(dec)); }
 
@@ -1223,7 +1232,7 @@ function showBlockDetail(id) {
         <div class="text-right"><div class="text-2xl font-bold font-mono" style="color:${col}">${b.score}</div><div class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border" style="color:${col}">${condLabel(b.score)}</div></div>
       </div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs mb-4">
-        <div class="flex justify-between text-gray-500"><span>APSIM SWD</span> <span class="font-mono text-gray-900">${b.swd} mm</span></div>
+        <div class="flex justify-between text-gray-500"><span>ApsimX SWD</span> <span class="font-mono text-gray-900">${b.swd} mm</span></div>
         <div class="flex justify-between text-gray-500"><span>Tr/Ep</span> <span class="font-mono text-gray-900">${(b.trep/100).toFixed(2)}</span></div>
         <div class="flex justify-between text-gray-500"><span>LAI</span> <span class="font-mono text-gray-900">${(b.lai/10).toFixed(1)}</span></div>
         <div class="flex justify-between text-gray-500"><span>Gano Risk</span> <span class="font-mono ${b.gano>60?'text-red-600 font-bold':'text-gray-900'}">${b.gano}%</span></div>
@@ -1253,10 +1262,8 @@ function renderBatchTable() {
   }).join('');
 }
 
-// --- STREAMING_CHUNK: Connecting AI Advisor Context-aware Prompts... ---
 // --- AI CHATBOT LOGIC ---
 const publishableKey = "sb_publishable_O8kV6rZ_Cx6v7VeDfmj1sA_oSBkJ68s";
-
 let chatHistory = [];
 let isChatOpen = false;
 
@@ -1276,15 +1283,15 @@ function toggleChat() {
 function triggerAIUploadNotification() {
   if(isChatOpen) return;
   document.getElementById('chat-notif').classList.remove('hidden');
-  appendMessage('model', `I noticed you uploaded a new APSIM Database (${apsimContextData.isMonthly ? 'Monthly Spacing' : 'Daily Spacing'}). The average annual yield across the simulation was **${apsimContextData.avgYield} t/ha** with average annual rainfall of **${apsimContextData.avgRain} mm**. 
+  appendMessage('model', `I noticed you uploaded a new ApsimX Database (${apsimContextData.isMonthly ? 'Monthly Spacing' : 'Daily Spacing'}). The average annual yield across the simulation was **${apsimContextData.avgYield} t/ha** with average annual rainfall of **${apsimContextData.avgRain} mm**. 
   
-  I have prepared the **Multi-Plot Diagnostic Grid** containing the 20 subplots matching your APSIM results. Would you like me to discuss these diagnostics?`);
+  I have prepared the **Multi-Plot Diagnostic Grid** containing the 20 subplots matching your ApsimX results. Would you like me to discuss these diagnostics?`);
 }
 
 function getDynamicSystemPrompt() {
   let ctxStr = "Context: You are ClimSmart AI, an Agronomy and Modeling expert. Answer concisely in HTML format (<p>, <strong>, <ul><li>). DO NOT use markdown headers.";
   if (apsimContextData) {
-    ctxStr += `\n\n[APSIM DATABASE LOADED]\nSimulation Range: ${apsimContextData.years}, Avg Yield: ${apsimContextData.avgYield} t/ha, Avg LAI: ${apsimContextData.avgLAI}, Avg Rain: ${apsimContextData.avgRain} mm. A 20-subplot high-density daily diagnostics grid is rendered containing key soil water, transpiration, nitrogen leaching, OM weight, and palm growth components. Mode: ${apsimContextData.isMonthly ? 'Monthly' : 'Daily'} Resolution.`;
+    ctxStr += `\n\n[ApsimX DATABASE LOADED]\nSimulation Range: ${apsimContextData.years}, Avg Yield: ${apsimContextData.avgYield} t/ha, Avg LAI: ${apsimContextData.avgLAI}, Avg Rain: ${apsimContextData.avgRain} mm. A 20-subplot high-density daily diagnostics grid is rendered containing key soil water, transpiration, nitrogen leaching, OM weight, and palm growth components. Mode: ${apsimContextData.isMonthly ? 'Monthly' : 'Daily'} Resolution.`;
   }
   const dssScore = document.getElementById('dss-score') ? document.getElementById('dss-score').textContent : 'N/A';
   ctxStr += `\n\n[DSS ENGINE STATE]\nCurrent Global DSS Score in Simulator: ${dssScore}.`;
@@ -1367,6 +1374,131 @@ async function submitChat() {
     input.disabled = false; btn.disabled = false; input.focus();
   }
 }
+
+// --- NEW CRON API INTEGRATION ---
+const REPO_OWNER = 'ahmad-dhuha-habibullah';
+const REPO_NAME = 'ClimSmartOP';
+const DB_PATH = 'assets/south_sumatra_oilpalm_daily_forecast.db';
+let pendingTriggerBtn = null;
+
+async function fetchCronStatus() {
+  try {
+    // 1. Fetch Last Workflow Run
+    const runRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?per_page=1`);
+    if(runRes.ok) {
+      const runData = await runRes.json();
+      if(runData.workflow_runs && runData.workflow_runs.length > 0) {
+        const lastRun = runData.workflow_runs[0];
+        const runDate = new Date(lastRun.updated_at).toLocaleString();
+        document.getElementById('last-run-time').innerText = runDate;
+        
+        const statusEl = document.getElementById('last-run-status');
+        statusEl.innerText = lastRun.status === 'completed' ? lastRun.conclusion : lastRun.status;
+        
+        if(lastRun.conclusion === 'success') {
+          statusEl.className = 'text-green-600 font-bold capitalize ml-1';
+        } else if (lastRun.conclusion === 'failure') {
+          statusEl.className = 'text-red-600 font-bold capitalize ml-1';
+        } else {
+          statusEl.className = 'text-yellow-600 font-bold capitalize ml-1';
+        }
+      }
+    }
+
+    // 2. Fetch Last Commit modifying the DB file
+    const dbRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=${DB_PATH}&per_page=1`);
+    if(dbRes.ok) {
+      const dbData = await dbRes.json();
+      if(dbData.length > 0) {
+        const dbDate = new Date(dbData[0].commit.author.date).toLocaleString();
+        document.getElementById('last-db-time').innerText = dbDate;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to fetch cron status:", e);
+  }
+}
+
+function triggerWorkflow(event) {
+  pendingTriggerBtn = event.currentTarget;
+  const savedKey = localStorage.getItem('climsmart_admin_key');
+  if (savedKey) {
+    executeRemoteCron(savedKey);
+  } else {
+    openAdminModal();
+  }
+}
+
+function openAdminModal() {
+  const modal = document.getElementById('admin-modal');
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    modal.firstElementChild.classList.remove('scale-95');
+    document.getElementById('admin-key-input').focus();
+  }, 10);
+}
+
+function closeAdminModal() {
+  const modal = document.getElementById('admin-modal');
+  modal.classList.add('opacity-0');
+  modal.firstElementChild.classList.add('scale-95');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    document.getElementById('admin-key-input').value = '';
+  }, 300);
+}
+
+async function submitAdminModal() {
+  const token = document.getElementById('admin-key-input').value.trim();
+  if(!token) {
+    showToast("Please enter a valid Admin Key.", "error");
+    return;
+  }
+  closeAdminModal();
+  await executeRemoteCron(token);
+}
+
+async function executeRemoteCron(token) {
+  if (!pendingTriggerBtn) return;
+  const btn = pendingTriggerBtn;
+  const originalText = btn.innerHTML;
+  
+  btn.innerHTML = '<i class="ti ti-loader animate-spin"></i> Triggering...';
+  btn.disabled = true;
+
+  try {
+    const response = await fetch(`https://ktuemkqrelpdaxwpmtax.supabase.co/functions/v1/trigger-apsim`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if(response.ok) {
+      showToast("Success! Manual ApsimX run has been triggered. The database should update in a few minutes.", "success");
+      localStorage.setItem('climsmart_admin_key', token);
+    } else {
+      const err = await response.json();
+      showToast(`Authorization Failed. ${err.error || 'Invalid Admin Key'}`, "error");
+      localStorage.removeItem('climsmart_admin_key');
+      // If it fails with 401, re-open modal so they can try again
+      if (response.status === 401) {
+        setTimeout(openAdminModal, 500);
+      }
+    }
+  } catch(e) {
+    showToast("Network error while trying to trigger the manual run.", "error");
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    setTimeout(fetchCronStatus, 3000);
+  }
+}
+
+// Initialize status fetch on load
+document.addEventListener('DOMContentLoaded', fetchCronStatus);
 </script>
 </body>
 </html>
