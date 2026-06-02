@@ -13,7 +13,7 @@
         {
           "$type": "Models.Climate.Weather, Models",
           "ConstantsFile": null,
-          "FileName": "South_Sumatra_Forecast.met",
+          "FileName": "South_Sumatra_Daily_Forecast.met",
           "ExcelWorkSheetName": null,
           "Name": "Weather",
           "ResourceName": null,
