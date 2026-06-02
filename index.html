@@ -33,6 +33,10 @@
   <!-- External Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js Adapter for Time Scales -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <!-- Chart.js Annotation Plugin for the "Today" Marker -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 
   <style type="text/tailwindcss">
     @layer components {
@@ -166,6 +170,7 @@
         <div class="pipe-item border-blue-200 shadow-sm border-l-4 border-l-blue-500"><i class="ti ti-calendar-stats text-s2b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Short/Medium Model</strong><br><span class="text-gray-500">16-day dynamic horizon</span></div><span class="badge-live">LIVE</span></div>
         <div class="pipe-item border-blue-200 shadow-sm border-l-4 border-l-blue-500"><i class="ti ti-globe text-s2b mt-0.5 text-lg"></i> <div><strong class="text-gray-900">Seasonal Forecast</strong><br><span class="text-gray-500">6-Month .MET generation</span></div><span class="badge-live">LIVE</span></div>
         <div class="pipe-item pipe-item-pending"><i class="ti ti-chart-line text-gray-400 mt-0.5 text-lg"></i> <div><strong>Sub-seasonal</strong><br><span class="text-gray-400">Ensemble predictions</span></div><span class="badge-pending">PENDING</span></div>
+        <div class="pipe-item pipe-item-pending"><i class="ti ti-adjustments-alt text-gray-400 mt-0.5 text-lg"></i> <div><strong>CMIP Projections</strong><br><span class="text-gray-400">Long-Term Decadal Models</span></div><span class="badge-pending">PENDING</span></div>
       </div>
 
       <!-- Stage 3 -->
@@ -271,7 +276,7 @@
           </div>
         </div>
         <button onclick="pushToDSS()" class="bg-palm-700 hover:bg-palm-800 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow flex items-center gap-2 transition ml-auto sm:ml-0">
-          <i class="ti ti-arrow-right"></i> Send Latest Data to DSS
+          <i class="ti ti-arrow-right"></i> Send Forecast to DSS
         </button>
       </div>
 
@@ -281,6 +286,20 @@
         <div class="metric-box bg-white"><div class="absolute top-0 left-0 w-full h-1 bg-green-500"></div><div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Avg FFB Yield</div><div class="text-2xl font-black text-gray-800 font-mono"><span id="stat-yield">-</span> <span class="text-sm text-gray-500 font-sans font-medium">t/ha</span></div></div>
         <div class="metric-box bg-white"><div class="absolute top-0 left-0 w-full h-1 bg-palm-500"></div><div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Avg Peak LAI</div><div class="text-2xl font-black text-gray-800 font-mono"><span id="stat-lai">-</span></div></div>
         <div class="metric-box bg-white"><div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div><div class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Avg Annual Rain</div><div class="text-2xl font-black text-gray-800 font-mono"><span id="stat-rain">-</span> <span class="text-sm text-gray-500 font-sans font-medium">mm</span></div></div>
+      </div>
+
+      <!-- NEW: Timeline Sync Controls -->
+      <div id="date-range-controls" class="hidden flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-3 rounded-xl border border-gray-200 shadow-sm animate-[fadeIn_0.3s_ease-in-out]">
+        <div class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="ti ti-calendar-time text-lg text-palm-600"></i> Global Timeline Zoom:</div>
+        <div class="flex flex-wrap items-center gap-2">
+          <input type="date" id="date-min" class="text-sm border border-gray-300 text-gray-700 rounded-md px-3 py-1.5 outline-none focus:border-palm-500 focus:ring-1 focus:ring-palm-500 shadow-sm transition-all" onchange="applyDateRange()">
+          <span class="text-gray-400 text-xs font-bold uppercase">to</span>
+          <input type="date" id="date-max" class="text-sm border border-gray-300 text-gray-700 rounded-md px-3 py-1.5 outline-none focus:border-palm-500 focus:ring-1 focus:ring-palm-500 shadow-sm transition-all" onchange="applyDateRange()">
+          <div class="flex items-center gap-1 ml-2 border-l border-gray-200 pl-3">
+            <button onclick="applyDateRange()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm"><i class="ti ti-zoom-in"></i> Apply</button>
+            <button onclick="resetDateRange()" class="text-gray-500 hover:text-palm-700 px-3 py-1.5 rounded-md text-xs font-bold transition-colors"><i class="ti ti-refresh"></i> Reset</button>
+          </div>
+        </div>
       </div>
 
       <!-- Inner Sub-Tabs Navigation for Plotting Canvas -->
@@ -322,99 +341,39 @@
          <div class="mb-4 bg-palm-50 border border-palm-100 p-4 rounded-xl text-sm text-palm-800 flex items-center gap-3">
            <i class="ti ti-chart-infographic text-2xl"></i>
            <div>
-             <strong id="grid-instruction-title">Daily Diagnostic View</strong><br>
-             The timeline runs sequentially. 
+             <strong id="grid-instruction-title">Diagnostic View</strong><br>
+             The timeline runs sequentially. Red dashed line indicates the split between historical context and forecast horizon.
            </div>
          </div>
 
          <!-- Downsampling Indicator -->
          <div class="text-xs text-gray-500 mb-4 font-semibold flex items-center gap-1.5" id="grid-downsampling-status">
            <i class="ti ti-activity text-sm"></i>
-           Downsampling applied gracefully (1 point per 5 days) to ensure instantaneous rendering.
+           Downsampling applied gracefully.
          </div>
 
          <!-- 20 Subplots Responsive Grid -->
          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="daily-grid-wrapper">
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Oil Palm Age</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-age"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Oil Palm LAI</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-lai"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualFronds</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-fronds"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualBunches</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-bunches"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualYield</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-yield"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualBunchSize</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-bunchsize"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.HarvestFFB</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-harvestffb"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Weather.Rain</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-rain"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.SoilWater.Es</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-es"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.EP</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-ep"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.UnderstoryEP</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-understoryep"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(1)</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_1"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(2)</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_2"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(3)</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_3"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">SurfaceOM.Wt</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-om_wt"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">SurfaceOM.N</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-om_n"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.RootGrowth</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-rootgrowth"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.StemGrowth</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-stemgrowth"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.FrondGrowth</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-frondgrowth"></canvas></div>
-           </div>
-           <div class="card p-4 flex flex-col min-h-[220px]">
-             <span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.BunchGrowth</span>
-             <div class="flex-grow mt-2 relative"><canvas id="gridChart-bunchgrowth"></canvas></div>
-           </div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Oil Palm Age</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-age"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Oil Palm LAI</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-lai"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualFronds</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-fronds"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualBunches</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-bunches"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualYield</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-yield"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Calculations.Script.AnnualBunchSize</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-bunchsize"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.HarvestFFB</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-harvestffb"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Weather.Rain</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-rain"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.SoilWater.Es</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-es"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.EP</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-ep"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.UnderstoryEP</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-understoryep"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(1)</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_1"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(2)</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_2"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">Soil.NO3.kgha(3)</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-no3_3"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">SurfaceOM.Wt</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-om_wt"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">SurfaceOM.N</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-om_n"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.RootGrowth</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-rootgrowth"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.StemGrowth</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-stemgrowth"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.FrondGrowth</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-frondgrowth"></canvas></div></div>
+           <div class="card p-4 flex flex-col min-h-[220px]"><span class="text-xs font-bold text-gray-500 uppercase truncate">OilPalm.BunchGrowth</span><div class="flex-grow mt-2 relative"><canvas id="gridChart-bunchgrowth"></canvas></div></div>
          </div>
       </div>
     </div>
@@ -422,10 +381,13 @@
 
   <!-- DSS ENGINE -->
   <div id="tab-dss" class="panel">
-    <div class="flex bg-gray-50 p-1.5 rounded-xl border border-gray-200 mb-6 inline-flex shadow-sm">
-      <button class="sub-tab active" onclick="switchSubTab('dss-thresholds')">1. Field Thresholds</button>
-      <button class="sub-tab" onclick="switchSubTab('dss-fuzz')">2. Fuzzification</button>
-      <button class="sub-tab" onclick="switchSubTab('dss-inference')">3. Fuzzy Inference Simulator</button>
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+      <h2 id="dss-mode-title" class="text-xl font-bold text-gray-900 mb-2 sm:mb-0">DSS Engine</h2>
+      <div class="flex bg-gray-50 p-1.5 rounded-xl border border-gray-200 inline-flex shadow-sm">
+        <button class="sub-tab active" onclick="switchSubTab('dss-thresholds')">1. Field Thresholds</button>
+        <button class="sub-tab" onclick="switchSubTab('dss-fuzz')">2. Fuzzification</button>
+        <button class="sub-tab" onclick="switchSubTab('dss-inference')">3. Fuzzy Inference Simulator</button>
+      </div>
     </div>
 
     <div id="sub-dss-thresholds" class="sub-panel active">
@@ -456,25 +418,25 @@
     <div id="sub-dss-inference" class="sub-panel">
       <div class="mb-6 card bg-white border-l-4 border-l-palm-600">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="section-title mb-0">Fuzzy Simulator Inputs</h3>
-          <span id="dss-source-badge" class="hidden bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-200">Values linked from ApsimX DB</span>
+          <h3 class="section-title mb-0">Forecast Aggregated Inputs</h3>
+          <span id="dss-source-badge" class="hidden bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-200">Linked directly from DB Forecast Horizon</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Soil Water Deficit (mm)</label><div class="flex items-center gap-3"><input type="range" id="i-swd" min="0" max="150" step="1" value="55" class="slider flex-grow" oninput="updateInference()"><span id="i-swd-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">55</span></div></div>
-          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Tr/Ep Ratio</label><div class="flex items-center gap-3"><input type="range" id="i-trep" min="0" max="100" step="1" value="60" class="slider flex-grow" oninput="updateInference()"><span id="i-trep-v" class="text-sm font-mono font-bold text-gray-700 w-10 text-right">0.60</span></div></div>
-          <div><label class="block text-xs font-semibold text-gray-500 mb-2">LAI Output</label><div class="flex items-center gap-3"><input type="range" id="i-lai" min="0" max="85" step="1" value="38" class="slider flex-grow" oninput="updateInference()"><span id="i-lai-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">3.8</span></div></div>
-          <div><label class="block text-xs font-semibold text-gray-500 mb-2">NDVI Index (Sat)</label><div class="flex items-center gap-3"><input type="range" id="i-ndvi" min="30" max="95" step="1" value="60" class="slider flex-grow" oninput="updateInference()"><span id="i-ndvi-v" class="text-sm font-mono font-bold text-gray-700 w-10 text-right">0.60</span></div></div>
+          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Avg Soil Water Deficit (mm)</label><div class="flex items-center gap-3"><input type="range" id="i-swd" min="0" max="150" step="1" value="55" class="slider flex-grow" oninput="updateInference()"><span id="i-swd-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">55</span></div></div>
+          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Avg Tr/Ep Ratio</label><div class="flex items-center gap-3"><input type="range" id="i-trep" min="0" max="100" step="1" value="60" class="slider flex-grow" oninput="updateInference()"><span id="i-trep-v" class="text-sm font-mono font-bold text-gray-700 w-10 text-right">0.60</span></div></div>
+          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Avg LAI Output</label><div class="flex items-center gap-3"><input type="range" id="i-lai" min="0" max="85" step="1" value="38" class="slider flex-grow" oninput="updateInference()"><span id="i-lai-v" class="text-sm font-mono font-bold text-gray-700 w-8 text-right">3.8</span></div></div>
+          <div><label class="block text-xs font-semibold text-gray-500 mb-2">Avg NDVI Index</label><div class="flex items-center gap-3"><input type="range" id="i-ndvi" min="30" max="95" step="1" value="60" class="slider flex-grow" oninput="updateInference()"><span id="i-ndvi-v" class="text-sm font-mono font-bold text-gray-700 w-10 text-right">0.60</span></div></div>
         </div>
       </div>
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="metric-box bg-white border-orange-100 shadow-[0_4px_12px_rgba(255,152,0,0.1)]"><div class="absolute top-0 left-0 w-full h-1 bg-orange-400"></div><div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Defuzzified Score</div><div class="text-4xl font-black mt-2 font-mono" id="dss-score">—</div></div>
         <div class="metric-box bg-white"><div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Condition</div><div class="text-2xl font-bold mt-3" id="dss-cond">—</div></div>
-        <div class="metric-box bg-white"><div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Irrigation Priority</div><div class="text-xl font-bold mt-3 text-gray-800" id="dss-irr">—</div></div>
+        <div class="metric-box bg-white"><div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Action Priority</div><div class="text-xl font-bold mt-3 text-gray-800" id="dss-irr">—</div></div>
         <div class="metric-box bg-white"><div class="text-xs text-gray-500 font-semibold uppercase tracking-wide">Dominant Rule</div><div class="text-sm font-bold mt-4 text-gray-800 leading-tight" id="dss-rule">—</div></div>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div><h3 class="section-title">Active Rule Firing</h3><div id="rule-list" class="space-y-3"></div></div>
-        <div><h3 class="section-title">Action Recommendation</h3><div class="bg-s5 border-l-4 border-s5b rounded-r-xl p-5 mb-8 shadow-sm"><div id="dss-rec" class="text-base font-medium text-gray-900 leading-relaxed"></div></div></div>
+        <div><h3 class="section-title">Action Plan Recipe</h3><div class="bg-s5 border-l-4 border-s5b rounded-r-xl p-5 mb-8 shadow-sm"><div id="dss-rec" class="text-base font-medium text-gray-900 leading-relaxed"></div></div></div>
       </div>
     </div>
   </div>
@@ -488,7 +450,7 @@
           <div class="flex items-center gap-3">
             <select id="map-layer" onchange="renderMap()" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-palm-500 px-3 py-1.5 font-medium shadow-sm outline-none">
               <option value="score">DSS Condition Score</option>
-              <option value="irr">Irrigation Priority</option>
+              <option value="irr">Irrigation/Action Priority</option>
               <option value="gano">Ganoderma Risk</option>
             </select>
             <button onclick="regenerateEstate()" class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm">
@@ -577,6 +539,9 @@ let SQL = null;
 let apsimContextData = null; 
 let activeBlockContext = null;
 let estateBlocks = null;
+let simulatedTodayDate = null; // Used to mark "Today" on charts
+let dbMinDate = null; // Global date boundaries for zooming
+let dbMaxDate = null;
 
 // Chart instance holders
 let yieldChartInstance = null;
@@ -625,13 +590,11 @@ function switchApsimSubTab(subTabId) {
   }
 }
 
-// Function to smoothly change DBs without refreshing
 function changeDatabase() {
   document.getElementById('analytics-dashboard').classList.add('hidden');
   document.getElementById('upload-container').classList.remove('hidden');
 }
 
-// --- Toast Notification System ---
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;
@@ -673,7 +636,6 @@ initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1
 
 setTimeout(() => { switchMainTab('overview'); }, 100);
 
-// --- File Upload & Processing ---
 const dropZone = document.getElementById('manual-upload-zone');
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
@@ -681,19 +643,17 @@ dropZone.addEventListener('drop', (e) => {
   e.preventDefault(); dropZone.classList.remove('dragover');
   if(e.dataTransfer.files && e.dataTransfer.files.length > 0) processFile(e.dataTransfer.files[0]);
 });
-
 function handleFileUpload(event) { if(event.target.files[0]) processFile(event.target.files[0]); }
 
 function processFile(file) {
   if(!SQL) { showToast("Please wait for the database engine to initialize.", "error"); return; }
-  
   const reader = new FileReader();
-  reader.onload = function() {
+  reader.onload = async function() {
     try {
       const db = new SQL.Database(new Uint8Array(reader.result));
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
       document.getElementById('db-file-name').textContent = nameWithoutExt;
-      analyzeAPSIMDatabase(db, nameWithoutExt);
+      await analyzeAPSIMDatabase(db, nameWithoutExt);
     } catch(e) { 
       console.error(e);
       showToast("Error parsing database. Ensure it is a valid SQLite (.db) file from ApsimX.", "error"); 
@@ -726,7 +686,7 @@ async function loadDbFromUrl(url, displayName, btnElement) {
     const arrayBuffer = await response.arrayBuffer();
     const db = new SQL.Database(new Uint8Array(arrayBuffer));
     
-    analyzeAPSIMDatabase(db, displayName);
+    await analyzeAPSIMDatabase(db, displayName);
   } catch(e) { 
     console.error("Error loading remote DB:", e);
     showToast("Database not found (404). Please verify that the Automated Cron has successfully completed.", "error"); 
@@ -737,7 +697,25 @@ async function loadDbFromUrl(url, displayName, btnElement) {
   }
 }
 
-function analyzeAPSIMDatabase(db, displayName) {
+// --- True "Today" NTP Fetching ---
+async function getTrueTodayDate() {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 sec timeout
+    const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta', { signal: controller.signal, cache: 'no-store' });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      return data.datetime.split('T')[0];
+    }
+  } catch (e) {
+    console.warn('Network time fetch failed or timed out, falling back to local system clock.', e);
+  }
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
+
+async function analyzeAPSIMDatabase(db, displayName) {
   try {
     const query = `SELECT "Clock.Today.Year" as Year, "OilPalm.Age" as Age, "OilPalm.LAI" as LAI, "AnnualRain" as Rain, "Calculations.Script.AnnualYield" as Yield, "AnnualET" as ET FROM AnnualOutput ORDER BY "Clock.Today.Year" ASC`;
     const res = db.exec(query);
@@ -768,9 +746,12 @@ function analyzeAPSIMDatabase(db, displayName) {
 
     renderCharts(data);
 
-    const isMonthly = analyzeDailyOrMonthlyData(db, displayName);
+    apsimContextData = { years: `${years[0]}-${years[years.length-1]}`, avgYield, avgLAI, avgRain };
+    
+    // Analyze daily/monthly data to extract 'Today' marker and compute DSS input averages
+    const isMonthly = await analyzeDailyOrMonthlyData(db, displayName);
+    apsimContextData.isMonthly = isMonthly;
 
-    apsimContextData = { years: `${years[0]}-${years[years.length-1]}`, avgYield, avgLAI, avgRain, latestYear: data[data.length-1], isMonthly };
     document.getElementById('upload-container').classList.add('hidden');
     document.getElementById('analytics-dashboard').classList.remove('hidden');
 
@@ -782,7 +763,7 @@ function analyzeAPSIMDatabase(db, displayName) {
   }
 }
 
-function analyzeDailyOrMonthlyData(db, displayName) {
+async function analyzeDailyOrMonthlyData(db, displayName) {
   try {
     const tablesRes = db.exec(`
       SELECT name FROM sqlite_master 
@@ -854,6 +835,53 @@ function analyzeDailyOrMonthlyData(db, displayName) {
 
     updateResolutionUI(isMonthly, displayName);
 
+    // Determine "Today" marker logic securely via API / NTP Fallback
+    const dates = data.map(d => typeof d.Date === 'string' ? d.Date.split(' ')[0] : d.Date);
+    simulatedTodayDate = await getTrueTodayDate();
+
+    // Populate and display Date Range Picker controls
+    if (dates.length > 0) {
+        dbMinDate = dates[0];
+        dbMaxDate = dates[dates.length - 1];
+        
+        const dMinEl = document.getElementById('date-min');
+        const dMaxEl = document.getElementById('date-max');
+        
+        dMinEl.value = dbMinDate; dMinEl.min = dbMinDate; dMinEl.max = dbMaxDate;
+        dMaxEl.value = dbMaxDate; dMaxEl.min = dbMinDate; dMaxEl.max = dbMaxDate;
+        
+        document.getElementById('date-range-controls').classList.remove('hidden');
+    }
+
+    // Calculate DSS input averages focusing on the *Forecast Horizon* (after "Today")
+    const forecastData = data.filter(d => {
+        const dStr = typeof d.Date === 'string' ? d.Date.split(' ')[0] : d.Date;
+        return dStr >= simulatedTodayDate;
+    });
+
+    // If true today is physically past the simulation database, fallback to the last segment of 
+    // the dataset so the DSS Engine still has reasonable input proxies instead of breaking.
+    let metricData = forecastData;
+    if (metricData.length === 0 && data.length > 0) {
+        const fallbackDays = isMonthly ? 1 : 15;
+        metricData = data.slice(-fallbackDays);
+    }
+
+    if (metricData.length > 0) {
+        const avgRain = metricData.reduce((s, d) => s + (d.Rain||0), 0) / metricData.length;
+        const avgEP = metricData.reduce((s, d) => s + (d.EP||0), 0) / metricData.length;
+        const avgEs = metricData.reduce((s, d) => s + (d.Es||0), 0) / metricData.length;
+        const avgLAI = metricData.reduce((s, d) => s + (d.LAI||0), 0) / metricData.length;
+
+        // Roughly calculate Soil Water Deficit proxy based on Evap vs Rain
+        let swdProxy = Math.max(0, (avgEP + avgEs - avgRain) * (isMonthly ? 30 : 1));
+        swdProxy = Math.min(150, swdProxy * (isMonthly ? 1 : 15)); // Scaling up just for realistic UI representation
+        let trepProxy = Math.min(1.0, avgEP / (avgEP + avgEs + 0.001)) * 100;
+        let ndviProxy = (0.3 + 0.5 * (1 - Math.exp(-0.5 * avgLAI))) * 100;
+
+        apsimContextData.forecastMetrics = { swd: swdProxy, trep: trepProxy, lai: avgLAI * 10, ndvi: ndviProxy };
+    }
+
     const skipFactor = isMonthly ? 1 : 5;
     const processedData = [];
     for (let i = 0; i < data.length; i += skipFactor) {
@@ -903,6 +931,84 @@ function updateResolutionUI(isMonthly, displayName) {
   if (dailyChartTitle) {
     dailyChartTitle.textContent = `${mode} Summary (Rainfall & LAI)`;
   }
+}
+
+function applyDateRange() {
+    const minVal = document.getElementById('date-min').value;
+    const maxVal = document.getElementById('date-max').value;
+    if (!minVal || !maxVal) return;
+
+    // 1. Update Annual Charts (Filter Categorical Label Arrays by Year Bounds)
+    const minYear = parseInt(minVal.split('-')[0]);
+    const maxYear = parseInt(maxVal.split('-')[0]);
+
+    if (yieldChartInstance && yieldChartInstance.data.labels) {
+        const labels = yieldChartInstance.data.labels;
+        
+        // Find safe bounds matching the year boundaries for categorical scales
+        let minIdx = labels.findIndex(l => l >= minYear);
+        let maxIdx = -1;
+        for (let i = labels.length - 1; i >= 0; i--) {
+            if (labels[i] <= maxYear) { maxIdx = i; break; }
+        }
+        
+        if (minIdx === -1) minIdx = 0;
+        if (maxIdx === -1) maxIdx = labels.length - 1;
+
+        yieldChartInstance.options.scales.x.min = labels[minIdx];
+        yieldChartInstance.options.scales.x.max = labels[maxIdx];
+        yieldChartInstance.update();
+        
+        if (laiChartInstance) {
+            laiChartInstance.options.scales.x.min = labels[minIdx];
+            laiChartInstance.options.scales.x.max = labels[maxIdx];
+            laiChartInstance.update();
+        }
+    }
+
+    // 2. Update Time-Scale Charts (Daily Summary)
+    if (dailyChartInstance) {
+        dailyChartInstance.options.scales.x.min = minVal;
+        dailyChartInstance.options.scales.x.max = maxVal;
+        dailyChartInstance.update();
+    }
+
+    // 3. Update Time-Scale Charts (20 Grid Diagnostics)
+    Object.values(dailyGridCharts).forEach(chart => {
+        chart.options.scales.x.min = minVal;
+        chart.options.scales.x.max = maxVal;
+        chart.update();
+    });
+}
+
+function resetDateRange() {
+    if (dbMinDate) document.getElementById('date-min').value = dbMinDate;
+    if (dbMaxDate) document.getElementById('date-max').value = dbMaxDate;
+    applyDateRange();
+}
+
+function getAnnotationConfig() {
+    if (!simulatedTodayDate) return {};
+    return {
+        annotations: {
+            todayLine: {
+                type: 'line',
+                scaleID: 'x',
+                value: simulatedTodayDate,
+                borderColor: 'rgb(239, 68, 68)',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                label: {
+                    content: 'TODAY',
+                    display: true,
+                    position: 'start',
+                    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                    color: 'white',
+                    font: { size: 9, weight: 'bold' }
+                }
+            }
+        }
+    };
 }
 
 function renderCharts(data) {
@@ -970,9 +1076,17 @@ function renderDailyChart(data, isMonthly) {
       scales: { 
         y: { type: 'linear', position: 'left', title: {display: true, text: 'LAI'}, min: 0 }, 
         y1: { type: 'linear', position: 'right', title: {display: true, text: 'Rain (mm)'}, grid: { drawOnChartArea: false }, min: 0, suggestedMax: 100 }, 
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } } 
+        x: { 
+            type: 'time',
+            time: { unit: isMonthly ? 'month' : 'day' },
+            grid: { display: false }, 
+            ticks: { maxTicksLimit: 12 } 
+        } 
       }, 
-      plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+      plugins: { 
+          legend: { position: 'top', labels: { boxWidth: 12 } },
+          annotation: getAnnotationConfig()
+      },
       interaction: { mode: 'index', intersect: false }
     }
   });
@@ -1038,6 +1152,8 @@ function renderDailyMultiPlotGrid(data, isMonthly) {
         maintainAspectRatio: false,
         scales: {
           x: {
+            type: 'time',
+            time: { unit: isMonthly ? 'month' : 'day' },
             display: true,
             grid: { display: false },
             ticks: {
@@ -1052,7 +1168,8 @@ function renderDailyMultiPlotGrid(data, isMonthly) {
           }
         },
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          annotation: getAnnotationConfig()
         }
       }
     });
@@ -1060,11 +1177,15 @@ function renderDailyMultiPlotGrid(data, isMonthly) {
 }
 
 function pushToDSS() {
-  if(!apsimContextData || !apsimContextData.latestYear) return;
-  const latest = apsimContextData.latestYear;
-  document.getElementById('i-swd').value = Math.min(150, Math.round(Math.max(0, 2000 - latest.Rain) / 10)); 
-  document.getElementById('i-trep').value = Math.round(Math.min(1.0, latest.ET / (latest.Rain || 1000)) * 100); 
-  document.getElementById('i-lai').value = Math.round(latest.LAI * 10);
+  if(!apsimContextData || !apsimContextData.forecastMetrics) return;
+  const m = apsimContextData.forecastMetrics;
+  document.getElementById('i-swd').value = Math.round(m.swd);
+  document.getElementById('i-trep').value = Math.round(m.trep);
+  document.getElementById('i-lai').value = Math.round(m.lai);
+  document.getElementById('i-ndvi').value = Math.round(m.ndvi);
+  
+  const modeText = apsimContextData.isMonthly ? 'Seasonal DSS Engine (Long-Term Planning)' : 'Short-Term DSS Engine (Daily Operations)';
+  document.getElementById('dss-mode-title').textContent = modeText;
   
   switchMainTab('dss');
   switchSubTab('dss-inference');
@@ -1079,7 +1200,8 @@ const TREP_MF = [ {name:'Deficit', color:'#E24B4A', fn:x=>trap(x,0,0,40,55)}, {n
 const LAI_MF = [ {name:'Stressed', color:'#E24B4A', fn:x=>trap(x,0,0,22,35)}, {name:'Suboptimal', color:'#EF9F27', fn:x=>tri(x,22,33,48)}, {name:'Optimal', color:'#639922', fn:x=>tri(x,38,52,68)}, {name:'High', color:'#185FA5', fn:x=>trap(x,60,72,85,85)} ];
 const NDVI_MF = [ {name:'Stressed', color:'#E24B4A', fn:x=>trap(x,30,30,48,58)}, {name:'Normal', color:'#EF9F27', fn:x=>tri(x,50,62,75)}, {name:'Good', color:'#639922', fn:x=>tri(x,65,75,88)}, {name:'Vigorous', color:'#185FA5', fn:x=>trap(x,80,88,95,95)} ];
 
-const RULES = [
+// Rules for Short-Term / Daily Data
+const RULES_DAILY = [
   {if:{swd:'Deficit',trep:'Deficit',ndvi:'Stressed'},then:'Critical stress',score:8,irr:'Emergency',action:'Irrigate 30mm immediately. Hold all fertiliser.'},
   {if:{swd:'Deficit',trep:'Deficit',ndvi:'Normal'},then:'Severe stress',score:18,irr:'Urgent',action:'Irrigate 25mm within 24h. Monitor bunch development.'},
   {if:{swd:'Deficit',trep:'Low',ndvi:'Stressed'},then:'Moderate stress',score:28,irr:'High',action:'Irrigate 18mm. Inspect for pest/disease pressure.'},
@@ -1090,6 +1212,18 @@ const RULES = [
   {if:{swd:'Optimal',trep:'Optimal',ndvi:'Good'},then:'Excellent',score:85,irr:'None',action:'Peak condition. Prepare harvest logistics.'},
   {if:{swd:'High',trep:'High',ndvi:'Normal'},then:'Drainage risk',score:35,irr:'Drain',action:'Open drainage channels. Delay N application.'},
   {if:{swd:'Excess',trep:'Optimal',ndvi:'Stressed'},then:'Anaerobic risk',score:22,irr:'Drain',action:'Emergency drainage. Inspect frond bases.'},
+];
+
+// Rules for Long-Term / Seasonal Data (6 Months)
+const SEASONAL_RULES = [
+  {if:{swd:'Deficit',trep:'Deficit',ndvi:'Stressed'},then:'Severe Drought Season Expected',score:15,irr:'Max Prep',action:'Secure long-term water rights. Delay major fertilizer procurement to avoid loss. Plan for lower harvest labor.'},
+  {if:{swd:'Deficit',trep:'Low',ndvi:'Normal'},then:'Dry Season Anticipated',score:35,irr:'High Prep',action:'Procure organic mulch/empty fruit bunches (EFB) to retain soil moisture. Shift N-P-K applications.'},
+  {if:{swd:'Low',trep:'Low',ndvi:'Good'},then:'Suboptimal Season',score:55,irr:'Moderate',action:'Normal procurement but budget for supplementary irrigation costs. Monitor cover crops.'},
+  {if:{swd:'Optimal',trep:'Optimal',ndvi:'Good'},then:'Prime Growing Season',score:80,irr:'Normal',action:'Maximize fertilizer procurement! Book peak-harvest logistics and transport capacity early.'},
+  {if:{swd:'Optimal',trep:'Optimal',ndvi:'Vigorous'},then:'Excellent Yield Expected',score:95,irr:'None',action:'Outstanding growth projected. Ensure mill capacity is booked. Apply scheduled nutrients fully.'},
+  {if:{swd:'High',trep:'High',ndvi:'Normal'},then:'High Rainfall Season',score:60,irr:'Monitor',action:'Expect wet season. Prepare drainage infrastructure. Ensure fertilization avoids heavy rain windows.'},
+  {if:{swd:'Excess',trep:'Optimal',ndvi:'Normal'},then:'Heavy Monsoon Expected',score:40,irr:'Drainage',action:'High rainfall period. Prioritize drainage infrastructure clearing. Delay fertilization to prevent leaching.'},
+  {if:{swd:'Excess',trep:'Anaerobic',ndvi:'Stressed'},then:'Flood/Leaching Risk',score:20,irr:'Critical',action:'Halt fertilization. Risk of severe Ganoderma spread in wet conditions. Budget for disease management.'},
 ];
 
 function condColor(score) { if(score<25)return'#A32D2D'; if(score<40)return'#E24B4A'; if(score<55)return'#EF9F27'; if(score<70)return'#639922'; return'#3B6D11'; }
@@ -1132,7 +1266,9 @@ function updateFuzz() {
 window.addEventListener('resize', () => { updateFuzz(); });
 
 function runDSS(swd, trep, lai, ndvi) {
-  const firings = RULES.map(r => {
+  const activeRules = (apsimContextData && apsimContextData.isMonthly) ? SEASONAL_RULES : RULES_DAILY;
+
+  const firings = activeRules.map(r => {
     const s = [];
     if(r.if.swd) s.push(SWD_MF.find(m=>m.name===r.if.swd)?.fn(swd)||0);
     if(r.if.trep) s.push(TREP_MF.find(m=>m.name===r.if.trep)?.fn(trep)||0);
@@ -1198,7 +1334,7 @@ function renderMap() {
   document.getElementById('block-map').innerHTML = estateBlocks.map(b => {
     let v, label;
     if(layer==='score') { v=b.score; label=b.score; }
-    else if(layer==='irr') { v = 100 - (['Emergency','Urgent','High','Moderate','Low','None','Drain'].indexOf(b.dom.irr||'None') * 14); label = b.dom.irr || 'None'; }
+    else if(layer==='irr') { v = 100 - (['Emergency','Urgent','High','Moderate','Low','None','Drain','Max Prep','Critical'].indexOf(b.dom.irr||'None') * 10); label = b.dom.irr || 'None'; }
     else if(layer==='gano') { v = 100 - b.gano; label = b.gano + '%'; }
     
     let bgCol, textCol;
@@ -1222,7 +1358,7 @@ function renderMap() {
 
 function showBlockDetail(id) {
   const b = estateBlocks.find(x => x.id === id); if(!b) return;
-  activeBlockContext = b; // Save for AI chatbot reference
+  activeBlockContext = b; 
   const col = condColor(b.score);
   
   document.getElementById('block-detail').innerHTML = `
@@ -1283,15 +1419,15 @@ function toggleChat() {
 function triggerAIUploadNotification() {
   if(isChatOpen) return;
   document.getElementById('chat-notif').classList.remove('hidden');
-  appendMessage('model', `I noticed you uploaded a new ApsimX Database (${apsimContextData.isMonthly ? 'Monthly Spacing' : 'Daily Spacing'}). The average annual yield across the simulation was **${apsimContextData.avgYield} t/ha** with average annual rainfall of **${apsimContextData.avgRain} mm**. 
+  appendMessage('model', `I noticed you uploaded a new ApsimX Database (${apsimContextData.isMonthly ? 'Seasonal Monthly Data' : 'Daily Short-Term Data'}). The average annual yield across the simulation was **${apsimContextData.avgYield} t/ha** with average annual rainfall of **${apsimContextData.avgRain} mm**. 
   
-  I have prepared the **Multi-Plot Diagnostic Grid** containing the 20 subplots matching your ApsimX results. Would you like me to discuss these diagnostics?`);
+  I have dynamically updated the DSS Engine rules to reflect the **${apsimContextData.isMonthly ? 'Seasonal (Long-Term Planning)' : 'Short-Term (Daily Operations)'}** horizon. Would you like me to discuss these diagnostics?`);
 }
 
 function getDynamicSystemPrompt() {
   let ctxStr = "Context: You are ClimSmart AI, an Agronomy and Modeling expert. Answer concisely in HTML format (<p>, <strong>, <ul><li>). DO NOT use markdown headers.";
   if (apsimContextData) {
-    ctxStr += `\n\n[ApsimX DATABASE LOADED]\nSimulation Range: ${apsimContextData.years}, Avg Yield: ${apsimContextData.avgYield} t/ha, Avg LAI: ${apsimContextData.avgLAI}, Avg Rain: ${apsimContextData.avgRain} mm. A 20-subplot high-density daily diagnostics grid is rendered containing key soil water, transpiration, nitrogen leaching, OM weight, and palm growth components. Mode: ${apsimContextData.isMonthly ? 'Monthly' : 'Daily'} Resolution.`;
+    ctxStr += `\n\n[ApsimX DATABASE LOADED]\nSimulation Range: ${apsimContextData.years}, Avg Yield: ${apsimContextData.avgYield} t/ha, Avg LAI: ${apsimContextData.avgLAI}, Avg Rain: ${apsimContextData.avgRain} mm. A 20-subplot high-density daily diagnostics grid is rendered containing key soil water, transpiration, nitrogen leaching, OM weight, and palm growth components. Mode: ${apsimContextData.isMonthly ? 'Monthly Seasonal' : 'Daily Short-Term'} Resolution. DSS uses forecast averages from the simulated future horizon.`;
   }
   const dssScore = document.getElementById('dss-score') ? document.getElementById('dss-score').textContent : 'N/A';
   ctxStr += `\n\n[DSS ENGINE STATE]\nCurrent Global DSS Score in Simulator: ${dssScore}.`;
@@ -1383,7 +1519,6 @@ let pendingTriggerBtn = null;
 
 async function fetchCronStatus() {
   try {
-    // 1. Fetch Last Workflow Run
     const runRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?per_page=1`);
     if(runRes.ok) {
       const runData = await runRes.json();
@@ -1405,7 +1540,6 @@ async function fetchCronStatus() {
       }
     }
 
-    // 2. Fetch Last Commit modifying the DB file
     const dbRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=${DB_PATH}&per_page=1`);
     if(dbRes.ok) {
       const dbData = await dbRes.json();
@@ -1483,7 +1617,6 @@ async function executeRemoteCron(token) {
       const err = await response.json();
       showToast(`Authorization Failed. ${err.error || 'Invalid Admin Key'}`, "error");
       localStorage.removeItem('climsmart_admin_key');
-      // If it fails with 401, re-open modal so they can try again
       if (response.status === 401) {
         setTimeout(openAdminModal, 500);
       }
@@ -1497,7 +1630,6 @@ async function executeRemoteCron(token) {
   }
 }
 
-// Initialize status fetch on load
 document.addEventListener('DOMContentLoaded', fetchCronStatus);
 </script>
 </body>
