@@ -33,7 +33,7 @@ jobs:
 
       # Run the Standard Simulation via Docker
       - name: Run Daily Simulation Config
-        run: docker run --rm -v "${{ github.workspace }}:/workspace" apsiminitiative/apsimng /workspace/assets/OilPalm.apsimx
+        run: docker run --rm -v "${{ github.workspace }}:/workspace" apsiminitiative/apsimng /workspace/assets/south_sumatra_oilpalm_daily_forecast.apsimx
 
       # Commit files back to GitHub
       - name: Commit and Push Updated Files
