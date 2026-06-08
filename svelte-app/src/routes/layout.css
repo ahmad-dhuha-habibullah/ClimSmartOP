@@ -1,0 +1,141 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --color-palm-50: #f2f7ec;
+  --color-palm-100: #e1efd3;
+  --color-palm-500: #639922;
+  --color-palm-700: #3B6D11;
+  --color-palm-800: #2d530d;
+  --color-s1: #e8f5e9;
+  --color-s1b: #4caf50;
+  --color-s2: #e3f2fd;
+  --color-s2b: #2196f3;
+  --color-s3: #f3e5f5;
+  --color-s3b: #9c27b0;
+  --color-s4: #fff3e0;
+  --color-s4b: #ff9800;
+  --color-s5: #e0f2f1;
+  --color-s5b: #009688;
+}
+
+@layer components {
+  .main-tab {
+    @apply px-5 py-3 text-sm font-semibold cursor-pointer border-b-2 transition-all duration-200 ease-in-out whitespace-nowrap text-gray-500 border-transparent hover:text-gray-800 hover:border-gray-300;
+  }
+  .main-tab.active {
+    @apply border-palm-700 text-palm-800 bg-palm-50/50 rounded-t-lg;
+  }
+
+  .sub-tab {
+    @apply px-4 py-2 text-xs font-medium cursor-pointer rounded-lg transition-all duration-200 text-gray-600 hover:bg-gray-100;
+  }
+  .sub-tab.active {
+    @apply bg-white text-palm-700 shadow-sm border border-gray-200;
+  }
+
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm p-5;
+  }
+  .card-tight {
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden;
+  }
+  .metric-box {
+    @apply bg-gray-50 border border-gray-100 rounded-xl p-4 text-center shadow-sm relative overflow-hidden;
+  }
+  .slider {
+    @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-palm-700 focus:outline-none focus:ring-2 focus:ring-palm-500/50;
+  }
+  .section-title {
+    @apply text-xs font-bold text-gray-400 uppercase tracking-wider mb-4;
+  }
+
+  .data-table {
+    @apply w-full text-sm text-left;
+  }
+  .data-table th {
+    @apply px-4 py-3 bg-gray-50 text-gray-600 font-semibold border-b border-gray-200 text-xs uppercase tracking-wider;
+  }
+  .data-table td {
+    @apply px-4 py-3 border-b border-gray-100 text-gray-700 align-middle;
+  }
+  .data-table tr:hover td {
+    @apply bg-gray-50/80;
+  }
+
+  .badge-critical {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 border border-red-200 uppercase tracking-wide;
+  }
+  .badge-stressed {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wide;
+  }
+  .badge-optimal {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-wide;
+  }
+  .badge-supra {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-wide;
+  }
+
+  .pipe-card {
+    @apply rounded-xl p-4 border shadow-sm flex flex-col h-full bg-white;
+  }
+  .pipe-head {
+    @apply text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2;
+  }
+  .pipe-item {
+    @apply bg-white/80 rounded-lg p-2.5 text-xs text-gray-700 mb-2 border border-black/5 flex items-start gap-2 shadow-sm relative;
+  }
+  .pipe-item-pending {
+    @apply opacity-50 border-dashed bg-gray-50 grayscale;
+  }
+  .badge-live {
+    @apply absolute top-1 right-1 text-[8px] font-bold bg-green-100 text-green-700 px-1 py-0.5 rounded shadow-sm border border-green-200;
+  }
+  .badge-pending {
+    @apply absolute top-1 right-1 text-[8px] font-bold bg-gray-200 text-gray-500 px-1 py-0.5 rounded shadow-sm border border-gray-300;
+  }
+
+  .upload-zone {
+    border: 2px dashed #d1d5db;
+    transition: all 0.2s;
+  }
+  .upload-zone.dragover {
+    border-color: #3B6D11;
+    background-color: #f2f7ec;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3B6D11;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+input[type=range]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3B6D11;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.chat-msg strong { font-weight: 700; color: inherit; }
+.chat-msg p { margin-bottom: 0.5rem; }
+.chat-msg p:last-child { margin-bottom: 0; }
+.chat-msg ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 0.5rem; }
