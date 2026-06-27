@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClimSmart-OP - Auto Parser Demo</title>
+    <title>ClimSmart-OP - Digital Twin Auto Parser</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -49,7 +49,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <!-- Layout Utama: Flex Column di Mobile, Flex Row di Desktop -->
+    <!-- Layout Utama -->
     <div class="h-screen w-full flex flex-col lg:flex-row overflow-hidden">
         
         <!-- ================= SISI KIRI: APLIKASI ENUMERATOR (CHAT) ================= -->
@@ -64,10 +64,10 @@
                 </div>
                 <div>
                     <h2 class="font-extrabold text-[15px] leading-tight flex items-center gap-1.5">
-                        ClimSmart AI
+                        Digital Twin AI
                         <span class="bg-emerald-800 text-[9px] px-1.5 py-0.5 rounded-md uppercase tracking-wider font-bold">Bot</span>
                     </h2>
-                    <p class="text-[11px] text-emerald-100 font-medium mt-0.5">Selalu Aktif - Parser Otomatis</p>
+                    <p class="text-[11px] text-emerald-100 font-medium mt-0.5">Multi-Sensor & Ground Truth Parser</p>
                 </div>
             </header>
 
@@ -80,7 +80,6 @@
             <div class="bg-[#f0f2f5] p-2.5 flex items-end gap-2 shrink-0 z-10 relative">
                 <div class="bg-white flex-grow rounded-2xl flex items-center border border-gray-200 overflow-hidden shadow-sm h-12 px-3">
                     <i data-lucide="smile" class="w-6 h-6 text-gray-400 mr-2 shrink-0"></i>
-                    <!-- Element ini yang akan menampung teks animasi mengetik -->
                     <div id="typing-input" class="flex-grow text-[13px] text-gray-700 font-medium whitespace-nowrap overflow-hidden text-ellipsis cursor-blink"></div>
                     <i data-lucide="paperclip" class="w-5 h-5 text-gray-400 shrink-0 transform -rotate-45 ml-2"></i>
                 </div>
@@ -95,70 +94,70 @@
             <!-- Header Admin -->
             <header class="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10 p-4 lg:px-8 flex justify-between items-center shrink-0">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
-                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                        <i data-lucide="database" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h1 class="font-extrabold text-gray-800 text-lg leading-tight">Dashboard Admin</h1>
-                        <p class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Live Monitoring</p>
+                        <h1 class="font-extrabold text-gray-800 text-lg leading-tight">Ground Truth Database</h1>
+                        <p class="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Digital Twin Engine Sync</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm">
+                <div class="flex items-center gap-2 text-[11px] font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-200 shadow-sm">
                     <span class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                     </span>
-                    Sinkronisasi Real-Time
+                    Real-Time Correction Active
                 </div>
             </header>
 
             <div class="p-4 lg:p-8 flex-grow">
-                <!-- Summary Cards -->
+                <!-- Summary Cards (Diperbarui untuk mengakomodasi berbagai data) -->
                 <div class="grid grid-cols-3 gap-3 lg:gap-6 mb-6">
                     <div class="bg-white p-4 lg:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
                         <div class="p-2 lg:p-3.5 bg-emerald-50 text-emerald-600 rounded-xl w-fit">
-                            <i data-lucide="trees" class="w-5 h-5 lg:w-7 lg:h-7"></i>
+                            <i data-lucide="leaf" class="w-5 h-5 lg:w-7 lg:h-7"></i>
                         </div>
                         <div>
-                            <p class="text-[10px] lg:text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Total Janjang</p>
-                            <h3 id="stat-janjang" class="text-lg lg:text-3xl font-extrabold text-gray-800 transition-all duration-300">0</h3>
+                            <p class="text-[10px] lg:text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Total Tonase Panen</p>
+                            <h3 id="stat-panen" class="text-lg lg:text-3xl font-extrabold text-gray-800 transition-all duration-300">0.0 <span class="text-xs lg:text-sm text-gray-500 font-bold">Ton</span></h3>
                         </div>
                     </div>
                     <div class="bg-white p-4 lg:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
-                        <div class="p-2 lg:p-3.5 bg-blue-50 text-blue-600 rounded-xl w-fit">
-                            <i data-lucide="weight" class="w-5 h-5 lg:w-7 lg:h-7"></i>
+                        <div class="p-2 lg:p-3.5 bg-amber-50 text-amber-600 rounded-xl w-fit">
+                            <i data-lucide="flask-conical" class="w-5 h-5 lg:w-7 lg:h-7"></i>
                         </div>
                         <div>
-                            <p class="text-[10px] lg:text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Total Tonase</p>
-                            <h3 id="stat-tonase" class="text-lg lg:text-3xl font-extrabold text-gray-800 transition-all duration-300">0 <span class="text-xs lg:text-sm text-gray-500 font-bold">Ton</span></h3>
+                            <p class="text-[10px] lg:text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Pupuk Teraplikasi</p>
+                            <h3 id="stat-pupuk" class="text-lg lg:text-3xl font-extrabold text-gray-800 transition-all duration-300">0.0 <span class="text-xs lg:text-sm text-gray-500 font-bold">Ton</span></h3>
                         </div>
                     </div>
                     <div class="bg-white p-4 lg:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
-                        <div class="p-2 lg:p-3.5 bg-red-50 text-red-600 rounded-xl w-fit">
-                            <i data-lucide="alert-triangle" class="w-5 h-5 lg:w-7 lg:h-7"></i>
+                        <div class="p-2 lg:p-3.5 bg-purple-50 text-purple-600 rounded-xl w-fit">
+                            <i data-lucide="wind" class="w-5 h-5 lg:w-7 lg:h-7"></i>
                         </div>
                         <div>
-                            <p class="text-[10px] lg:text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Total Afkir</p>
-                            <h3 id="stat-afkir" class="text-lg lg:text-3xl font-extrabold text-gray-800 transition-all duration-300">0 <span class="text-xs lg:text-sm text-gray-500 font-bold">Jjg</span></h3>
+                            <p class="text-[10px] lg:text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-0.5">Log Riset & Emisi</p>
+                            <h3 id="stat-sains" class="text-lg lg:text-3xl font-extrabold text-gray-800 transition-all duration-300">0 <span class="text-xs lg:text-sm text-gray-500 font-bold">Data</span></h3>
                         </div>
                     </div>
                 </div>
 
                 <!-- Data Table -->
                 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-                    <div class="p-4 border-b border-gray-100 bg-gray-50/80">
-                        <h3 class="font-extrabold text-gray-800 text-sm">Log Data Masuk Harian</h3>
+                    <div class="p-4 border-b border-gray-100 bg-gray-50/80 flex justify-between items-center">
+                        <h3 class="font-extrabold text-gray-800 text-sm">Unified Field Logs</h3>
+                        <span class="text-xs font-bold text-gray-500">Auto-Categorized by AI</span>
                     </div>
                     <div class="overflow-x-auto flex-grow">
                         <table class="w-full text-sm text-left whitespace-nowrap">
                             <thead class="bg-white text-gray-400 text-[10px] uppercase tracking-wider font-extrabold border-b border-gray-100">
                                 <tr>
-                                    <th class="px-5 py-3">Waktu</th>
-                                    <th class="px-5 py-3">Blok</th>
-                                    <th class="px-5 py-3 text-center">Janjang</th>
-                                    <th class="px-5 py-3 text-center">Tonase</th>
-                                    <th class="px-5 py-3 text-center">Afkir</th>
-                                    <th class="px-5 py-3">Pemanen</th>
+                                    <th class="px-5 py-3">Waktu & ID</th>
+                                    <th class="px-5 py-3">Kategori Data</th>
+                                    <th class="px-5 py-3">Lokasi (Blok)</th>
+                                    <th class="px-5 py-3">Detail Ekstraksi Metrik</th>
+                                    <th class="px-5 py-3">Enumerator</th>
                                     <th class="px-5 py-3">Raw Input AI</th>
                                 </tr>
                             </thead>
@@ -169,8 +168,8 @@
                         
                         <!-- Empty State -->
                         <div id="empty-state" class="p-10 text-center flex flex-col items-center justify-center opacity-50 transition-opacity">
-                            <i data-lucide="inbox" class="w-12 h-12 mb-3 text-gray-400"></i>
-                            <p class="font-bold text-gray-500 text-sm">Menunggu laporan dari lapangan...</p>
+                            <i data-lucide="radio-receiver" class="w-12 h-12 mb-3 text-gray-400"></i>
+                            <p class="font-bold text-gray-500 text-sm">Menunggu asupan data dari Field Enumerators...</p>
                         </div>
                     </div>
                 </div>
@@ -180,36 +179,30 @@
 
     <!-- SCRIPT LOGIKA ANIMASI & AUTO PARSER -->
     <script>
-        // Inisialisasi ikon Lucide
         lucide.createIcons();
 
-        // Elemen DOM
+        // DOM Elements
         const chatBox = document.getElementById('chat-box');
         const typingInput = document.getElementById('typing-input');
         const sendBtn = document.getElementById('send-btn');
         const adminTableBody = document.getElementById('admin-table-body');
         const emptyState = document.getElementById('empty-state');
         
-        // Elemen Statistik
-        const statJanjang = document.getElementById('stat-janjang');
-        const statTonase = document.getElementById('stat-tonase');
-        const statAfkir = document.getElementById('stat-afkir');
+        const statPanen = document.getElementById('stat-panen');
+        const statPupuk = document.getElementById('stat-pupuk');
+        const statSains = document.getElementById('stat-sains');
 
-        // State Dashboard
-        let totalStats = { janjang: 0, tonase: 0, afkir: 0 };
+        // Dashboard State
+        let totalStats = { panen: 0.0, pupuk: 0.0, logSains: 0 };
         let recordCount = 1;
 
-        // Mendapatkan waktu saat ini
         const getTime = () => {
             const now = new Date();
             return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         };
 
-        // Format angka (ribuan)
-        const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num);
-
-        // Fungsi Render Bubble Chat
-        const addChatBubble = (type, text, rawData = null) => {
+        // Render Bubble Chat
+        const addChatBubble = (type, text, parsedObj = null) => {
             const time = getTime();
             let bubbleHTML = '';
             
@@ -217,7 +210,7 @@
                 bubbleHTML = `
                     <div class="flex flex-col items-start mb-4 bubble-enter w-full">
                         <div class="bg-[#FFEEDB] text-[#7A644D] text-[10px] font-bold mx-auto px-3 py-1.5 rounded-lg shadow-sm mb-4 text-center max-w-[90%]">
-                            🔒 Demo Sistem Parser Otomatis
+                            🔒 Terhubung dengan Digital Twin Engine & Ground Truth Database
                         </div>
                         <div class="max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm text-[13px] leading-relaxed bg-white text-gray-800 rounded-tl-sm relative break-words">
                             ${text}
@@ -238,20 +231,34 @@
                     </div>
                 `;
             }
-            else if (type === 'bot_reply') {
+            else if (type === 'bot_reply' && parsedObj) {
+                // Menentukan warna badge berdasarkan kategori
+                let badgeColor = 'bg-gray-100 text-gray-700';
+                if(parsedObj.kategori === 'Panen') badgeColor = 'bg-emerald-100 text-emerald-700';
+                else if(parsedObj.kategori === 'Pemupukan') badgeColor = 'bg-amber-100 text-amber-700';
+                else if(parsedObj.kategori === 'Pengukuran Sains') badgeColor = 'bg-purple-100 text-purple-700';
+                else if(parsedObj.kategori === 'Drone Scouting') badgeColor = 'bg-blue-100 text-blue-700';
+
+                // Menyusun metrik secara dinamis
+                let metricsList = parsedObj.metrics.map(m => `<li><span class="text-gray-500 font-medium">${m.label}:</span> <strong>${m.val}</strong></li>`).join('');
+
                 bubbleHTML = `
                     <div class="flex flex-col items-start mb-4 bubble-enter w-full">
-                        <div class="max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm text-[13px] leading-relaxed bg-white text-gray-800 rounded-tl-sm relative border border-emerald-100 break-words">
-                            <div class="font-bold text-emerald-600 mb-1 flex items-center gap-1.5 border-b border-gray-100 pb-1">
-                                <i data-lucide="bot" class="w-4 h-4"></i> Data Diekstrak:
+                        <div class="max-w-[85%] rounded-2xl p-3.5 shadow-sm text-[13px] leading-relaxed bg-white text-gray-800 rounded-tl-sm relative border border-gray-100 break-words">
+                            <div class="font-extrabold text-gray-800 mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
+                                <span class="flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-blue-600"></i> Extracted Data:</span>
+                                <span class="text-[9px] uppercase tracking-widest ${badgeColor} px-2 py-0.5 rounded-full">${parsedObj.kategori}</span>
                             </div>
-                            <ul class="space-y-0.5 mt-1">
-                                <li>📍 Blok: <strong>${rawData.blok}</strong></li>
-                                <li>🌴 Janjang: <strong>${rawData.janjang}</strong></li>
-                                <li>⚖️ Berat: <strong>${rawData.tonase} Ton</strong></li>
-                                ${rawData.afkir > 0 ? `<li class="text-red-600">⚠️ Mentah/Rusak: <strong>${rawData.afkir}</strong></li>` : ''}
-                                <li>👤 Oleh: <strong>${rawData.pelapor}</strong></li>
-                            </ul>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[12px]">
+                                <div><span class="text-gray-400 text-[10px] block uppercase font-bold">Blok Lokasi</span><span class="font-extrabold">${parsedObj.blok}</span></div>
+                                <div><span class="text-gray-400 text-[10px] block uppercase font-bold">Pelapor</span><span class="font-extrabold">${parsedObj.pelapor}</span></div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                <span class="text-gray-400 text-[10px] block uppercase font-bold mb-1">Detail Metrik</span>
+                                <ul class="space-y-0.5 text-[12px]">
+                                    ${metricsList}
+                                </ul>
+                            </div>
                             <div class="text-[10px] text-gray-400 mt-2 text-right">${time}</div>
                         </div>
                     </div>
@@ -276,35 +283,45 @@
 
             chatBox.insertAdjacentHTML('beforeend', bubbleHTML);
             lucide.createIcons();
-            chatBox.scrollTop = chatBox.scrollHeight; // Auto scroll
+            chatBox.scrollTop = chatBox.scrollHeight; 
         };
 
-        // Fungsi Update Tabel Admin
+        // Update Tabel Admin & Dashboard
         const updateAdminDashboard = (data, rawText) => {
             if(emptyState) emptyState.style.display = 'none';
 
-            // Update state total
-            totalStats.janjang += data.janjang;
-            totalStats.tonase += data.tonase;
-            totalStats.afkir += data.afkir;
+            // Update State Berdasarkan Kategori
+            if(data.kategori === 'Panen') {
+                totalStats.panen += data.numericVal;
+                statPanen.innerHTML = `${totalStats.panen.toFixed(1)} <span class="text-xs lg:text-sm text-gray-500 font-bold">Ton</span>`;
+                statPanen.classList.add('text-emerald-500');
+                setTimeout(() => statPanen.classList.remove('text-emerald-500'), 500);
+            } 
+            else if(data.kategori === 'Pemupukan') {
+                totalStats.pupuk += data.numericVal;
+                statPupuk.innerHTML = `${totalStats.pupuk.toFixed(1)} <span class="text-xs lg:text-sm text-gray-500 font-bold">Ton</span>`;
+                statPupuk.classList.add('text-amber-500');
+                setTimeout(() => statPupuk.classList.remove('text-amber-500'), 500);
+            } 
+            else {
+                totalStats.logSains += 1;
+                statSains.innerHTML = `${totalStats.logSains} <span class="text-xs lg:text-sm text-gray-500 font-bold">Data</span>`;
+                statSains.classList.add('text-purple-500');
+                setTimeout(() => statSains.classList.remove('text-purple-500'), 500);
+            }
 
-            // Animasi angka (Update DOM)
-            statJanjang.innerText = formatNumber(totalStats.janjang);
-            statJanjang.classList.add('text-emerald-500');
-            
-            statTonase.innerHTML = `${totalStats.tonase.toFixed(1)} <span class="text-xs lg:text-sm text-gray-500 font-bold">Ton</span>`;
-            statTonase.classList.add('text-blue-500');
-            
-            statAfkir.innerHTML = `${totalStats.afkir} <span class="text-xs lg:text-sm text-gray-500 font-bold">Jjg</span>`;
-            if(data.afkir > 0) statAfkir.classList.add('text-red-500');
+            // Tentukan Styling Kategori untuk Tabel
+            let badgeStyle = '';
+            let iconStr = '';
+            if(data.kategori === 'Panen') { badgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200'; iconStr = 'leaf'; }
+            else if(data.kategori === 'Pemupukan') { badgeStyle = 'bg-amber-50 text-amber-700 border-amber-200'; iconStr = 'flask-conical'; }
+            else if(data.kategori === 'Pengukuran Sains') { badgeStyle = 'bg-purple-50 text-purple-700 border-purple-200'; iconStr = 'wind'; }
+            else if(data.kategori === 'Drone Scouting') { badgeStyle = 'bg-blue-50 text-blue-700 border-blue-200'; iconStr = 'plane'; }
 
-            setTimeout(() => {
-                statJanjang.classList.remove('text-emerald-500');
-                statTonase.classList.remove('text-blue-500');
-                statAfkir.classList.remove('text-red-500');
-            }, 500);
+            // Menyusun metrik untuk kolom tabel
+            let metricHtml = data.metrics.map(m => `<span class="inline-block mr-2"><span class="text-gray-400">${m.label}:</span> <span class="font-extrabold text-gray-800">${m.val}</span></span>`).join('');
 
-            // Tambah baris ke tabel
+            // Menambahkan baris ke tabel
             const tr = document.createElement('tr');
             tr.className = 'highlight-row border-b border-gray-50 last:border-0 group';
             tr.innerHTML = `
@@ -313,17 +330,15 @@
                     <div class="text-[10px] text-gray-400 font-bold">${getTime()}</div>
                 </td>
                 <td class="px-5 py-3">
-                    <span class="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 font-extrabold text-[11px]">
-                        ${data.blok}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border font-extrabold text-[10px] uppercase tracking-wider ${badgeStyle}">
+                        <i data-lucide="${iconStr}" class="w-3 h-3"></i> ${data.kategori}
                     </span>
                 </td>
-                <td class="px-5 py-3 text-center font-bold text-gray-700">${data.janjang}</td>
-                <td class="px-5 py-3 text-center font-extrabold text-blue-600">${data.tonase.toFixed(1)} T</td>
-                <td class="px-5 py-3 text-center">
-                    ${data.afkir > 0 
-                        ? `<span class="text-red-500 font-extrabold text-[11px]">${data.afkir} X</span>`
-                        : `<span class="text-gray-300 font-bold text-[11px]">-</span>`
-                    }
+                <td class="px-5 py-3">
+                    <span class="font-extrabold text-gray-700 bg-gray-100 px-2 py-0.5 rounded text-[11px]">${data.blok}</span>
+                </td>
+                <td class="px-5 py-3 text-[11px]">
+                    ${metricHtml}
                 </td>
                 <td class="px-5 py-3">
                     <div class="flex items-center gap-2">
@@ -340,27 +355,26 @@
                 </td>
             `;
             
-            // Prepend (tambah di paling atas)
             adminTableBody.insertBefore(tr, adminTableBody.firstChild);
+            lucide.createIcons(); // Re-render icons in new row
         };
 
-        // --- MESIN SKENARIO ANIMASI (THE DIRECTOR) ---
+        // --- SKENARIO MULTI-FUNGSI ---
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // Fungsi untuk mengetik efek visual huruf demi huruf
-        const typeTextAnimation = async (text, speed = 40) => {
+        const typeTextAnimation = async (text, speed = 35) => {
             typingInput.textContent = '';
             typingInput.classList.remove('cursor-blink');
-            typingInput.style.borderRight = "2px solid #047857"; // Solid cursor while typing
+            typingInput.style.borderRight = "2px solid #047857"; 
             
             for (let i = 0; i < text.length; i++) {
                 typingInput.textContent += text.charAt(i);
-                await sleep(speed + (Math.random() * 30)); // random delay for realism
+                await sleep(speed + (Math.random() * 20)); 
             }
             
             typingInput.style.borderRight = "none";
             typingInput.classList.add('cursor-blink');
-            await sleep(500); // Wait before sending
+            await sleep(600); 
         };
 
         const simulateClickSend = async () => {
@@ -369,62 +383,76 @@
             sendBtn.classList.remove('scale-90', 'bg-emerald-800');
         };
 
-        // Skenario Chat yang akan dijalankan
+        // Skenario 1: Panen
+        // Skenario 2: Pupuk
+        // Skenario 3: Pengukuran Gas Sains
+        // Skenario 4: Drone Scouting
         const scenarios = [
             {
-                raw: "Pagi min, lapor panen blok A4 dapet 150 janjang. beratnya kurleb 2.8 ton. ada afkir 3 dr sudirman",
-                parsed: { blok: "A4", janjang: 150, tonase: 2.8, afkir: 3, pelapor: "Sudirman" }
+                raw: "lapor pak, panen blok C4 hari ini 150 jjg. total berat di timbangan 3.2 ton. ada yg mentah 5 dr eko",
+                parsed: { 
+                    kategori: "Panen", blok: "C4", pelapor: "Eko", numericVal: 3.2,
+                    metrics: [ {label: "Janjang", val: "150 Jjg"}, {label: "Tonase", val: "3.2 Ton"}, {label: "Afkir", val: "5"} ]
+                }
             },
             {
-                raw: "blok B2 selesai. 85 tandan saja, 1.2 ton. mentah 0. joko",
-                parsed: { blok: "B2", janjang: 85, tonase: 1.2, afkir: 0, pelapor: "Joko" }
+                raw: "tim rina udah selesai aplikasi pupuk NPK di blok B2, total kepake 50 karung, sekitar 2.5 ton",
+                parsed: { 
+                    kategori: "Pemupukan", blok: "B2", pelapor: "Rina", numericVal: 2.5,
+                    metrics: [ {label: "Jenis", val: "NPK"}, {label: "Volume", val: "2.5 Ton"}, {label: "Keterangan", val: "50 Karung"} ]
+                }
             },
             {
-                raw: "Laporan harian dr pak agus. blok C9 udh dipanen semua total dpt 210 jjg. tonase nembus 4.5 ton. tp banyak yg busuk 12 jjg tolong dicatet",
-                parsed: { blok: "C9", janjang: 210, tonase: 4.5, afkir: 12, pelapor: "Agus" }
+                raw: "pengukuran emisi GHG blok C1 chamber 1 pagi ini: CO2 400ppm, CH4 1.2ppm, N2O 0.3ppm. kondisi tanah lembab. lapor sari",
+                parsed: { 
+                    kategori: "Pengukuran Sains", blok: "C1", pelapor: "Sari", numericVal: 1, // trigger log count
+                    metrics: [ {label: "CO2", val: "400 ppm"}, {label: "CH4", val: "1.2 ppm"}, {label: "N2O", val: "0.3 ppm"} ]
+                }
+            },
+            {
+                raw: "drone scan blok D3 aman, ga ada tanda serangan ulat api, tajuk pohon hijau normal. iot weather stasiun nyala. pilot erik",
+                parsed: { 
+                    kategori: "Drone Scouting", blok: "D3", pelapor: "Erik", numericVal: 1, // trigger log count
+                    metrics: [ {label: "Hama", val: "Bebas Ulat Api"}, {label: "Tajuk", val: "Hijau Normal"}, {label: "IoT", val: "Aktif"} ]
+                }
             }
         ];
 
         // Eksekusi skenario utama
         const runSimulation = async () => {
-            // 1. Bot Welcome Message
-            addChatBubble('bot_welcome', 'Halo Pemanen! Ketik saja laporan hasil panen Anda seperti biasa. AI kami akan otomatis menyusunnya untuk Dashboard Pengepul.');
-            await sleep(2000);
+            // Bot Welcome
+            addChatBubble('bot_welcome', 'Halo Tim Lapangan & Peneliti! Silakan masukkan laporan panen, aplikasi pupuk, hasil scan drone, atau ukuran emisi gas Anda di sini. AI akan memilahnya untuk sistem <strong>Digital Twin</strong> kita.');
+            await sleep(2500);
 
-            // 2. Loop melalui skenario
+            // Loop Scenarios
             for (let i = 0; i < scenarios.length; i++) {
                 const s = scenarios[i];
 
-                // Animasi Ngetik
                 await typeTextAnimation(s.raw);
-                
-                // Animasi Kirim
                 await simulateClickSend();
+                
                 const userText = typingInput.textContent;
-                typingInput.textContent = ''; // clear input
+                typingInput.textContent = ''; 
                 addChatBubble('user', userText);
 
-                // Bot loading (Parsing)
                 await sleep(500);
                 addChatBubble('typing');
                 
-                // Bot membalas dan Admin Table update bersamaan
-                await sleep(1500); // Simulasi waktu proses API LLM
+                await sleep(1500); 
                 addChatBubble('bot_reply', '', s.parsed);
                 updateAdminDashboard(s.parsed, userText);
 
-                // Jeda antar skenario
                 await sleep(3500);
             }
 
-            // Pesan Selesai
+            // End Message
             await sleep(1000);
             addChatBubble('typing');
             await sleep(1000);
-            addChatBubble('bot_welcome', '✅ Simulasi Selesai. Data lapangan masuk secara instan, tanpa format kaku, dan siap dipantau admin secara *real-time*.');
+            addChatBubble('bot_welcome', '✅ Sinkronisasi Ground Truth Database selesai. Model prediksi masa depan diperbarui.');
         };
 
-        // Mulai simulasi 1 detik setelah halaman dimuat
+        // Start 1 detik setelah render
         setTimeout(runSimulation, 1000);
 
     </script>
