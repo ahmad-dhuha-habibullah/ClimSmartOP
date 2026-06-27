@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimSmart-OP - Si-NIR Matrix Analyzer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js untuk Grafik Spektral -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F8FAFC; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, transparent, #10b981, transparent);
+            box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
+            animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            display: none;
+            z-index: 10;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .pulse-led {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Cursor Animasi */
+        .cursor-demo {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: top 1.5s ease-in-out, left 1.5s ease-in-out, transform 0.2s ease, opacity 0.5s ease;
+            filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden relative">
+
+    <!-- Simulasi Kursor Mouse -->
+    <div id="simulated-cursor" class="cursor-demo opacity-0" style="top: 90%; left: 80%; width: 28px; height: 28px;">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87c.45 0 .67-.54.35-.85L6.35 2.86a.5.5 0 0 0-.85.35Z" fill="#111827" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-gray-200 px-4 sm:px-6 py-3.5 flex justify-between items-center shrink-0 shadow-sm z-20 relative">
+        <div class="flex items-center gap-3">
+            <img src="https://climsmart-op.site/assets/clim-smart-op-logo.png" alt="ClimSmart Logo" class="h-9 w-auto object-contain" />
+            <div class="h-8 w-px bg-gray-200 hidden sm:block"></div>
+            <div>
+                <h1 class="font-extrabold text-gray-900 text-[15px] leading-tight flex items-center gap-2">
+                    Si-NIR Spectral Analyzer
+                    <span class="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded-md uppercase tracking-widest font-bold">DVK Module</span>
+                </h1>
+                <p class="text-[11px] font-bold text-emerald-600 mt-0.5">Digital Twin Integration Engine</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden sm:flex items-center gap-2 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600">
+                <i data-lucide="bluetooth" class="w-4 h-4 text-blue-500"></i>
+                DVK-4291 Connected
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col lg:flex-row gap-6">
+        
+        <!-- Kolom Kiri: Kontrol Perangkat & Info Sampel -->
+        <div class="w-full lg:w-[320px] xl:w-[380px] flex flex-col gap-4 shrink-0">
+            
+            <!-- Device Status Card -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-extrabold text-gray-800 text-sm">Status Perangkat</h3>
+                        <p class="text-xs font-medium text-gray-500 mt-0.5">NeoSpectra Scanner Module</p>
+                    </div>
+                    <div id="device-led" class="w-3 h-3 rounded-full bg-emerald-500 pulse-led"></div>
+                </div>
+                
+                <div class="bg-slate-900 rounded-xl p-4 text-white relative border border-slate-800">
+                    <div id="scan-laser" class="scan-line"></div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sensor Suhu</span>
+                        <span class="text-xs font-extrabold text-emerald-400">28.4 °C (Optimal)</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kalibrasi Putih</span>
+                        <span class="text-xs font-extrabold text-blue-400"><i data-lucide="check-circle" class="w-3 h-3 inline pb-0.5"></i> Valid</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status Baterai</span>
+                        <div class="flex items-center gap-1.5 text-xs font-extrabold">
+                            84% <i data-lucide="battery-medium" class="w-4 h-4 text-emerald-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Data Sampel -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex-grow">
+                <h3 class="font-extrabold text-gray-800 text-sm mb-4">Parameter Sampel Tanah</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[11px] font-extrabold text-gray-500 uppercase tracking-widest mb-1.5 block">ID Sampel</label>
+                        <input type="text" value="SMPL-2606-B4" readonly class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-extrabold text-gray-500 uppercase tracking-widest mb-1.5 block">Lokasi Asal (Blok Sawit)</label>
+                        <select class="w-full bg-white border border-gray-200 hover:border-emerald-400 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 outline-none transition-colors cursor-pointer appearance-none">
+                            <option>Afdeling 1 - Blok B4</option>
+                            <option>Afdeling 1 - Blok B5</option>
+                            <option>Afdeling 2 - Blok A1</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-extrabold text-gray-500 uppercase tracking-widest mb-1.5 block">Kedalaman Tanah</label>
+                        <select class="w-full bg-white border border-gray-200 hover:border-emerald-400 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 outline-none transition-colors cursor-pointer appearance-none">
+                            <option>Topsoil (0 - 20 cm)</option>
+                            <option>Subsoil (20 - 40 cm)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-4 border-t border-gray-100">
+                    <button id="btn-scan" onclick="startScanning()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-3.5 flex items-center justify-center gap-2 font-extrabold shadow-lg shadow-emerald-500/30 transition-all active:scale-95 group relative overflow-hidden">
+                        <i data-lucide="scan" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500"></i>
+                        <span>Pindai Spektrum Tanah</span>
+                    </button>
+                    <p id="scan-status" class="text-center text-xs font-bold text-emerald-600 mt-3 h-4 opacity-0 transition-opacity duration-300">
+                        Memindai gelombang NIR...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Visualisasi Spektrum & Hasil Nutrisi -->
+        <div class="flex-1 flex flex-col gap-4 min-w-0">
+            
+            <!-- Grafik Spektrum -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[350px] lg:h-[45%] shrink-0">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="font-extrabold text-gray-800 text-sm">Spectral Fingerprint</h3>
+                        <p class="text-[11px] font-bold text-gray-400 mt-0.5">Absorbansi vs Panjang Gelombang (1350 - 2500 nm)</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-gray-50 border border-gray-200 text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">
+                            <div class="w-2 h-2 rounded-full bg-gray-300" id="legend-baseline"></div> Baseline
+                        </span>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 border border-emerald-200 text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider opacity-50 transition-opacity" id="legend-scan">
+                            <div class="w-2 h-2 rounded-full bg-emerald-500"></div> Hasil Scan
+                        </span>
+                    </div>
+                </div>
+                <div class="flex-grow relative w-full h-full">
+                    <!-- Loading Overlay (saat scan) -->
+                    <div id="chart-loading" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 rounded-xl">
+                        <i data-lucide="loader-2" class="w-8 h-8 text-emerald-500 animate-spin mb-2"></i>
+                        <span class="text-xs font-extrabold text-emerald-700">Menganalisis Spektrum...</span>
+                    </div>
+                    <!-- Canvas Chart.js -->
+                    <canvas id="spectralChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Hasil Prediksi Nutrisi (Chemometrics) -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex-grow flex flex-col relative overflow-hidden">
+                <div id="result-overlay" class="absolute inset-0 bg-gray-50/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center transition-opacity duration-500">
+                    <i data-lucide="flask-conical" class="w-12 h-12 text-gray-300 mb-3"></i>
+                    <p class="font-extrabold text-gray-500 text-sm">Belum ada sampel yang dipindai.</p>
+                </div>
+
+                <div class="flex justify-between items-center mb-5 shrink-0">
+                    <div>
+                        <h3 class="font-extrabold text-gray-800 text-sm">Estimasi Parameter Agronomi</h3>
+                        <p class="text-[11px] font-bold text-gray-400 mt-0.5">Hasil Prediksi Model Machine Learning (PLSR)</p>
+                    </div>
+                    <button class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-colors">
+                        <i data-lucide="database" class="w-4 h-4"></i> Sync
+                    </button>
+                </div>
+
+                <!-- Grid Hasil Nutrisi -->
+                <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 lg:gap-4 overflow-y-auto custom-scrollbar p-1">
+                    
+                    <!-- Card N -->
+                    <div class="border border-gray-100 bg-gray-50 rounded-xl p-4 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-black text-sm">N</div>
+                            <span class="bg-red-100 text-red-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">Rendah</span>
+                        </div>
+                        <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-2">Total Nitrogen</p>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <h4 id="val-n" class="text-2xl font-extrabold text-gray-800">--</h4>
+                            <span class="text-xs font-bold text-gray-500">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Card P -->
+                    <div class="border border-gray-100 bg-gray-50 rounded-xl p-4 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-black text-sm">P</div>
+                            <span class="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">Optimal</span>
+                        </div>
+                        <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-2">Fosfor (P2O5)</p>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <h4 id="val-p" class="text-2xl font-extrabold text-gray-800">--</h4>
+                            <span class="text-xs font-bold text-gray-500">ppm</span>
+                        </div>
+                    </div>
+
+                    <!-- Card K -->
+                    <div class="border border-gray-100 bg-gray-50 rounded-xl p-4 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-black text-sm">K</div>
+                            <span class="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">Optimal</span>
+                        </div>
+                        <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-2">Kalium (K2O)</p>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <h4 id="val-k" class="text-2xl font-extrabold text-gray-800">--</h4>
+                            <span class="text-xs font-bold text-gray-500">ppm</span>
+                        </div>
+                    </div>
+
+                    <!-- Card SOC -->
+                    <div class="border border-gray-100 bg-gray-50 rounded-xl p-4 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+                                <i data-lucide="leaf" class="w-4 h-4"></i>
+                            </div>
+                            <span class="bg-red-100 text-red-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">Rendah</span>
+                        </div>
+                        <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-2">Soil Org. Carbon</p>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <h4 id="val-soc" class="text-2xl font-extrabold text-gray-800">--</h4>
+                            <span class="text-xs font-bold text-gray-500">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Moisture -->
+                    <div class="border border-gray-100 bg-gray-50 rounded-xl p-4 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-600 flex items-center justify-center">
+                                <i data-lucide="droplet" class="w-4 h-4"></i>
+                            </div>
+                            <span class="bg-emerald-100 text-emerald-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">Optimal</span>
+                        </div>
+                        <p class="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-2">Kelembaban</p>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <h4 id="val-mc" class="text-2xl font-extrabold text-gray-800">--</h4>
+                            <span class="text-xs font-bold text-gray-500">%</span>
+                        </div>
+                    </div>
+
+                </div>
+                
+                <div class="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"></i>
+                    <div>
+                        <p class="text-xs font-extrabold text-emerald-900">Rekomendasi Agronomi:</p>
+                        <p class="text-[11px] text-emerald-700 font-medium mt-0.5">Kadar Nitrogen (N) dan Karbon Organik (SOC) terdeteksi di bawah ambang batas optimal untuk usia tanam sawit di Blok B4. Direkomendasikan aplikasi pupuk Urea ekstra 0.5 kg/pohon dan penambahan janjang kosong.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Inisialisasi ikon
+        lucide.createIcons();
+
+        // Setup Chart.js
+        const ctx = document.getElementById('spectralChart').getContext('2d');
+        const wavelengths = Array.from({length: 116}, (_, i) => 1350 + (i * 10));
+        const baselineData = wavelengths.map(() => 0.1 + (Math.random() * 0.05));
+
+        const soilSpectralData = wavelengths.map(w => {
+            let base = 0.4 + (Math.random() * 0.05);
+            if (w > 1380 && w < 1480) base += 0.3 * Math.exp(-Math.pow((w - 1430)/30, 2));
+            if (w > 1850 && w < 2000) base += 0.6 * Math.exp(-Math.pow((w - 1920)/40, 2));
+            if (w > 2150 && w < 2250) base += 0.25 * Math.exp(-Math.pow((w - 2200)/25, 2));
+            base += (w - 1350) * 0.0001; 
+            return base;
+        });
+
+        const spectralChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: wavelengths,
+                datasets: [
+                    {
+                        label: 'Baseline Reference',
+                        data: baselineData,
+                        borderColor: '#cbd5e1',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        borderDash: [5, 5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 1500, easing: 'easeOutQuart' },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleFont: { family: 'Plus Jakarta Sans', size: 11 },
+                        bodyFont: { family: 'Plus Jakarta Sans', size: 12, weight: 'bold' },
+                        callbacks: {
+                            title: (context) => `Wavelength: ${context[0].label} nm`,
+                            label: (context) => `Absorbansi: ${context.parsed.y.toFixed(3)} au`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Wavelength (nm)', font: { size: 10, weight: 'bold' }, color: '#94a3b8' },
+                        grid: { display: false },
+                        ticks: { maxTicksLimit: 10, font: { size: 10 } }
+                    },
+                    y: {
+                        title: { display: true, text: 'Absorbance (au)', font: { size: 10, weight: 'bold' }, color: '#94a3b8' },
+                        grid: { color: '#f1f5f9' },
+                        suggestedMin: 0,
+                        suggestedMax: 1.2
+                    }
+                }
+            }
+        });
+
+        const btnScan = document.getElementById('btn-scan');
+        const scanStatus = document.getElementById('scan-status');
+        const scanLaser = document.getElementById('scan-laser');
+        const chartLoading = document.getElementById('chart-loading');
+        const resultOverlay = document.getElementById('result-overlay');
+        const legendScan = document.getElementById('legend-scan');
+        
+        const valN = document.getElementById('val-n');
+        const valP = document.getElementById('val-p');
+        const valK = document.getElementById('val-k');
+        const valSOC = document.getElementById('val-soc');
+        const valMC = document.getElementById('val-mc');
+
+        // Flag untuk memastikan scan tidak terpanggil berulang kali secara bersamaan
+        let isScanning = false;
+
+        function startScanning() {
+            if(isScanning) return;
+            isScanning = true;
+
+            btnScan.classList.add('opacity-80', 'scale-95', 'bg-emerald-800');
+            setTimeout(() => {
+                btnScan.classList.remove('scale-95', 'bg-emerald-800');
+            }, 150);
+
+            btnScan.querySelector('span').innerText = "Memproses Spektrum...";
+            
+            scanStatus.classList.remove('opacity-0');
+            scanLaser.style.display = 'block';
+            chartLoading.classList.remove('opacity-0');
+
+            if (spectralChart.data.datasets.length > 1) {
+                spectralChart.data.datasets.pop();
+                spectralChart.update('none');
+                legendScan.classList.add('opacity-50');
+            }
+
+            setTimeout(() => {
+                scanLaser.style.display = 'none';
+                scanStatus.innerText = "Menerapkan Model PLSR (Chemometrics)...";
+                
+                spectralChart.data.datasets.push({
+                    label: 'Sampel Tanah Sawit',
+                    data: soilSpectralData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: true
+                });
+                spectralChart.update();
+                legendScan.classList.remove('opacity-50');
+
+                setTimeout(() => {
+                    chartLoading.classList.add('opacity-0');
+                    
+                    resultOverlay.classList.add('opacity-0');
+                    setTimeout(() => resultOverlay.style.display = 'none', 500);
+
+                    animateValue(valN, 0, 0.08, 1000, 2);
+                    animateValue(valP, 0, 15.4, 1000, 1);
+                    animateValue(valK, 0, 112.5, 1000, 1);
+                    animateValue(valSOC, 0, 1.25, 1000, 2);
+                    animateValue(valMC, 0, 24.8, 1000, 1);
+
+                    btnScan.classList.remove('opacity-80');
+                    btnScan.querySelector('span').innerText = "Pindai Ulang Sampel";
+                    scanStatus.classList.add('opacity-0');
+                    setTimeout(() => scanStatus.innerText = "Memindai gelombang NIR...", 300);
+                    
+                    isScanning = false;
+
+                }, 1500);
+
+            }, 2500);
+        }
+
+        function animateValue(obj, start, end, duration, decimals) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const currentVal = (progress * (end - start) + start).toFixed(decimals);
+                obj.innerHTML = currentVal;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // ==========================================
+        // AUTO-PLAY DEMO LOGIC (ANIMASI KURSOR MOUSE)
+        // ==========================================
+        window.onload = () => {
+            setTimeout(() => {
+                const cursor = document.getElementById('simulated-cursor');
+                const targetBtn = document.getElementById('btn-scan');
+                
+                // Mendapatkan posisi tombol
+                const rect = targetBtn.getBoundingClientRect();
+                // Mengatur kursor agak ke kanan dan ke bawah tengah tombol
+                const targetX = rect.left + (rect.width / 2) + 20; 
+                const targetY = rect.top + (rect.height / 2) + 5;
+
+                // Tampilkan kursor
+                cursor.classList.remove('opacity-0');
+                cursor.classList.add('opacity-100');
+
+                // Bergerak ke arah tombol
+                setTimeout(() => {
+                    cursor.style.top = `${targetY}px`;
+                    cursor.style.left = `${targetX}px`;
+
+                    // Lakukan simulasi klik saat sampai
+                    setTimeout(() => {
+                        // Efek menekan
+                        cursor.style.transform = 'scale(0.8)';
+                        
+                        setTimeout(() => {
+                            // Angkat klik dan jalankan fungsi
+                            cursor.style.transform = 'scale(1)';
+                            startScanning();
+                            
+                            // Geser kursor sedikit menjauh lalu pudarkan
+                            setTimeout(() => {
+                                cursor.style.top = `${targetY + 40}px`;
+                                cursor.style.left = `${targetX + 40}px`;
+                                cursor.classList.remove('opacity-100');
+                                cursor.classList.add('opacity-0');
+                            }, 500);
+
+                        }, 200); // durasi kursor ditahan
+                    }, 1500); // durasi perjalanan kursor
+                }, 500); // jeda sebelum mulai jalan
+            }, 2000); // Jeda setelah halaman dimuat sebelum demo dimulai
+        };
+    </script>
+</body>
+</html>
