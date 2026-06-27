@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimSmart-OP - Sistem Pelacakan Keuangan</title>
+    <!-- Tailwind CSS dari CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons dari CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC]">
+
+    <!-- KONTAINER UTAMA -->
+    <div id="app"></div>
+
+    <script>
+        // --- DATA MOCKUP ---
+        const getAvatar = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=047857&color=fff&bold=true`;
+
+        const mockUsers = [
+            { id: 'u1', role: 'peneliti', roleName: 'Peneliti/Perekayasa Utama', name: 'Prof. Dr. Ir. Hermantoro, M.S.', nidn: '0501016501', photo: getAvatar('Hermantoro'), project: 'Sistem Real-Time GHG Footprints berbasis IoT', anggaran: 1250000000, realisasi: 850000000, status: 'Berjalan' },
+            { id: 'u2', role: 'peneliti', roleName: 'Peneliti/Perekayasa Utama', name: 'Prof. Dr. Satyanto Krido Saptomo, S.TP, M.Si', nidn: '0502027001', photo: getAvatar('Satyanto Krido'), project: 'Kajian Fisiologi Tanaman Terintegrasi', anggaran: 950000000, realisasi: 950000000, status: 'Selesai' },
+            { id: 'u3', role: 'peneliti', roleName: 'Peneliti/Perekayasa Madya', name: 'Dr. Idung Risdiyanto, S.Si., M.Sc.', nidn: '0503037501', photo: getAvatar('Idung Risdiyanto'), project: 'Inventarisasi Karbon Stok Hutan Konservasi', anggaran: 750000000, realisasi: 320000000, status: 'Berjalan' },
+            { id: 'u4', role: 'peneliti', roleName: 'Peneliti/Perekayasa Muda', name: 'Lisma Safitri, S.TP, M.Si., PhD', nidn: '0504048001', photo: getAvatar('Lisma Safitri'), project: 'Aplikasi Pencatatan Cerdas Pertanian', anggaran: 450000000, realisasi: 150000000, status: 'Berjalan' },
+            { id: 'u5', role: 'peneliti', roleName: 'Peneliti/Perekayasa Muda', name: 'Dimas Haryo Pamungkas, S.Si., M.M.', nidn: '0505058501', photo: getAvatar('Dimas Haryo'), project: 'Modelling Ekonomi Presisi Lahan', anggaran: 300000000, realisasi: 280000000, status: 'Berjalan' },
+            { id: 'u6', role: 'peneliti', roleName: 'Peneliti/Perekayasa Pratama', name: 'Kuni Faizah, S.Si., M.Sc.', nidn: '0506069001', photo: getAvatar('Kuni Faizah'), project: 'Pemetaan Ilmu Tanah Terpadu', anggaran: 150000000, realisasi: 50000000, status: 'Berjalan' },
+            { id: 'u7', role: 'peneliti', roleName: 'Peneliti/Perekayasa Pratama', name: 'Ahmad Dhuha Habibullah, S.Si., M.Si.', nidn: '0507079501', photo: getAvatar('Ahmad Dhuha'), project: 'Teknologi Dashboard Eksekutif', anggaran: 150000000, realisasi: 150000000, status: 'Selesai' },
+            { id: 'u8', role: 'peneliti', roleName: 'Tim Lapangan, Staff & Pengolah Data', name: 'Tim Asisten Peneliti (Gabungan)', nidn: '-', photo: getAvatar('Tim Peneliti'), project: 'Dukungan Riset & Operasional Lapangan', anggaran: 250000000, realisasi: 65000000, status: 'Berjalan' }
+        ];
+
+        const mockTransactions = [
+            { id: 1, tanggal: '2025-06-19', penerima: 'Fadhlullah Ramadhani', kategori: 'Biaya Gaji dan Upah', uraian: 'Peneliti Perekayasa', jumlahBruto: 6400000, hasPhoto: true },
+            { id: 2, tanggal: '2025-03-05', penerima: 'CV. Mataram Karya', kategori: 'Biaya Pembelian Bahan', uraian: 'Industrial IoT Edge Controller', jumlahBruto: 24000000, hasPhoto: true },
+            { id: 3, tanggal: '2025-03-01', penerima: 'Toko Elektronik Maju', kategori: 'Biaya Pembelian Bahan', uraian: 'Kabel Sensor & Modul WiFi', jumlahBruto: 1250000, hasPhoto: false },
+        ];
+
+        // --- STATE MANAJEMEN ---
+        let activeRole = 'selector'; // 'selector', 'admin', 'peneliti'
+        let currentUser = null;
+
+        // --- HELPER FUNGSI ---
+        const formatRp = (angka) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka || 0);
+        };
+
+        const renderIcons = () => {
+            lucide.createIcons();
+        };
+
+        // Fungsi untuk mengganti tampilan
+        const navigateTo = (role, userId = null) => {
+            activeRole = role;
+            if (userId) {
+                currentUser = mockUsers.find(u => u.id === userId);
+            } else {
+                currentUser = null;
+            }
+            renderApp();
+        };
+
+        // --- KOMPONEN UI (FUNGSI MENGEMBALIKAN STRING HTML) ---
+
+        const getHeaderHTML = () => {
+            let userSection = '';
+            
+            if (activeRole === 'peneliti' && currentUser) {
+                userSection = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden md:block">
+                            <p class="text-[13px] font-extrabold text-gray-800">${currentUser.name}</p>
+                            <p class="text-[11px] text-emerald-600 font-bold tracking-wide">${currentUser.roleName}</p>
+                        </div>
+                        <img src="${currentUser.photo}" alt="Profile" class="w-10 h-10 rounded-full border-2 border-emerald-100 object-cover shadow-sm" />
+                    </div>
+                `;
+            } else if (activeRole === 'admin') {
+                userSection = `
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden md:block">
+                            <p class="text-[13px] font-extrabold text-gray-800">Administrator</p>
+                            <p class="text-[11px] text-emerald-600 font-bold tracking-wide">ClimSmart-OP & INSTIPER</p>
+                        </div>
+                        <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 shadow-sm border-2 border-emerald-200">
+                            <i data-lucide="building" class="w-[18px] h-[18px]"></i>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <header class="bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
+                        <div class="flex items-center gap-3 cursor-pointer group" onclick="navigateTo('selector')">
+                            <div class="flex items-center gap-2 mr-2">
+                                <img src="https://climsmart-op.site/assets/clim-smart-op-logo.png" alt="ClimSmart Logo" class="h-9 w-auto object-contain group-hover:scale-105 transition-transform" />
+                                <div class="h-6 w-px bg-gray-200 hidden sm:block"></div>
+                                <img src="https://home.instiperjogja.ac.id/assets/images/instiper.png" alt="INSTIPER Logo" class="h-8 w-auto object-contain group-hover:scale-105 transition-transform hidden sm:block" />
+                            </div>
+                            <div class="hidden lg:block">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-extrabold text-xl text-gray-800 tracking-tight leading-none">ClimSmart-OP</span>
+                                    <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[9px] font-extrabold rounded-full uppercase tracking-widest">Preview</span>
+                                </div>
+                                <span class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block mt-0.5">Sistem Keuangan</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-5">
+                            ${userSection}
+                            <div class="h-8 w-px bg-gray-200"></div>
+                            <button onclick="navigateTo('selector')" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2.5 rounded-xl transition-all flex items-center gap-2 text-sm font-bold" title="Keluar / Ganti Akun">
+                                <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
+                                <span class="hidden sm:block">Keluar</span>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+            `;
+        };
+
+        const renderSelectorPage = () => {
+            let userListHTML = mockUsers.map(user => `
+                <button onclick="navigateTo('peneliti', '${user.id}')" class="w-full flex items-center justify-between p-3 border border-gray-200 bg-white rounded-2xl hover:border-teal-500 hover:shadow-md transition-all group">
+                    <div class="flex items-center gap-3">
+                        <img src="${user.photo}" alt="${user.name}" class="w-11 h-11 rounded-full border border-gray-100 group-hover:border-teal-300 object-cover" />
+                        <div class="text-left">
+                            <p class="font-bold text-[13px] text-gray-800 line-clamp-1">${user.name}</p>
+                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mt-0.5">${user.roleName}</p>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-right" class="text-gray-300 group-hover:text-teal-500 transition-colors shrink-0 ml-2 w-[18px] h-[18px]"></i>
+                </button>
+            `).join('');
+
+            return `
+                <div class="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
+                    <div class="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 max-w-md w-full relative overflow-hidden flex flex-col max-h-[90vh]">
+                        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 rounded-full bg-emerald-500 opacity-10 blur-2xl pointer-events-none"></div>
+                        
+                        <div class="text-center mb-6 relative z-10 shrink-0">
+                            <div class="w-full flex items-center justify-center gap-4 mb-4">
+                                <img src="https://climsmart-op.site/assets/clim-smart-op-logo.png" alt="Logo ClimSmart-OP" class="h-16 w-auto object-contain drop-shadow-sm" />
+                                <div class="h-12 w-px bg-gray-300"></div>
+                                <img src="https://home.instiperjogja.ac.id/assets/images/instiper.png" alt="Logo INSTIPER" class="h-14 w-auto object-contain drop-shadow-sm" />
+                            </div>
+                            <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">ClimSmart-OP</h1>
+                            <p class="text-emerald-600 font-bold text-sm mt-0.5">Sistem Pelacakan Keuangan</p>
+                            <p class="text-gray-500 text-xs mt-3">Pilih peran pengguna untuk melanjutkan</p>
+                        </div>
+                        
+                        <div class="relative z-10 shrink-0 mb-4">
+                            <button onclick="navigateTo('admin')" class="w-full flex items-center justify-between p-3.5 border border-gray-200 bg-white rounded-2xl hover:border-emerald-500 hover:shadow-md transition-all group">
+                                <div class="flex items-center gap-4">
+                                    <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
+                                        <i data-lucide="building" class="w-5 h-5"></i>
+                                    </div>
+                                    <div class="text-left">
+                                        <p class="font-bold text-gray-800 text-sm">Admin ClimSmart-OP</p>
+                                        <p class="text-[11px] text-gray-500">Rekap seluruh proyek</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="chevron-right" class="text-gray-400 group-hover:text-emerald-500 transition-colors w-[18px] h-[18px]"></i>
+                            </button>
+                        </div>
+
+                        <div class="relative py-2 flex items-center shrink-0">
+                            <div class="flex-grow border-t border-gray-200"></div>
+                            <span class="flex-shrink-0 mx-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Akun Tim Peneliti</span>
+                            <div class="flex-grow border-t border-gray-200"></div>
+                        </div>
+
+                        <div class="space-y-2.5 overflow-y-auto custom-scrollbar pr-2 pb-2 mt-2">
+                            ${userListHTML}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderAdminPage = () => {
+            const totalAnggaran = mockUsers.reduce((sum, u) => sum + u.anggaran, 0);
+            const totalRealisasi = mockUsers.reduce((sum, u) => sum + u.realisasi, 0);
+            const persentaseTotal = ((totalRealisasi / totalAnggaran) * 100).toFixed(1);
+
+            let tableRows = mockUsers.map(user => {
+                const pct = ((user.realisasi / user.anggaran) * 100).toFixed(0);
+                const isSelesai = user.status === 'Selesai';
+                return `
+                    <tr class="hover:bg-emerald-50/30 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <img src="${user.photo}" alt="" class="w-10 h-10 rounded-full object-cover border border-gray-200 bg-white" />
+                                <div>
+                                    <p class="font-extrabold text-gray-800 text-[13px]">${user.name}</p>
+                                    <p class="text-[11px] text-emerald-600 font-bold mt-0.5">${user.roleName}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 font-semibold text-gray-600 max-w-xs" title="${user.project}">${user.project}</td>
+                        <td class="px-6 py-4 text-right font-bold text-gray-600">${formatRp(user.anggaran)}</td>
+                        <td class="px-6 py-4 text-right font-extrabold text-emerald-600">${formatRp(user.realisasi)}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-full bg-gray-100 rounded-full h-2 min-w-[80px]">
+                                    <div class="h-full rounded-full ${pct >= 90 ? 'bg-emerald-500' : 'bg-blue-500'}" style="width: ${pct}%"></div>
+                                </div>
+                                <span class="text-xs font-extrabold text-gray-700 w-8">${pct}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-extrabold border ${isSelesai ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}">
+                                ${user.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            return `
+                ${getHeaderHTML()}
+                <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h1 class="text-2xl font-extrabold text-gray-900 flex items-center gap-2">
+                                <i data-lucide="layout-dashboard" class="text-emerald-500"></i> Dashboard ClimSmart-OP
+                            </h1>
+                            <p class="text-sm text-gray-500 mt-1 font-medium">Rekapitulasi real-time seluruh proyek dan tim peneliti</p>
+                        </div>
+                        <button class="bg-white border border-gray-200 hover:border-emerald-500 hover:text-emerald-600 text-gray-700 px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm font-bold shadow-sm transition-all duration-200">
+                            <i data-lucide="printer" class="w-[18px] h-[18px]"></i> Unduh Laporan
+                        </button>
+                    </div>
+
+                    <!-- Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Card 1 -->
+                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <i data-lucide="wallet" class="w-20 h-20 text-blue-500"></i>
+                            </div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                                    <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-bold text-gray-500">Total Anggaran Dikelola</p>
+                            </div>
+                            <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">${formatRp(totalAnggaran)}</h2>
+                            <p class="text-sm text-gray-500 mt-2 font-medium">Dari <span class="text-blue-600 font-bold">${mockUsers.length}</span> Entitas Peneliti</p>
+                        </div>
+                        
+                        <!-- Card 2 -->
+                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <i data-lucide="pie-chart" class="w-20 h-20 text-emerald-500"></i>
+                            </div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-bold text-gray-500">Total Realisasi Terserap</p>
+                            </div>
+                            <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">${formatRp(totalRealisasi)}</h2>
+                            <div class="w-full bg-gray-100 rounded-full h-2.5 mt-4 overflow-hidden">
+                                <div class="bg-gradient-to-r from-emerald-400 to-emerald-500 h-full rounded-full transition-all duration-1000" style="width: ${persentaseTotal}%"></div>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-2 font-medium"><span class="text-emerald-600 font-bold">${persentaseTotal}%</span> Anggaran Terserap</p>
+                        </div>
+
+                        <!-- Card 3 -->
+                        <div class="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                                <i data-lucide="clock" class="w-20 h-20 text-orange-500"></i>
+                            </div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-2 bg-orange-50 text-orange-600 rounded-xl">
+                                    <i data-lucide="clock" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-bold text-gray-500">Sisa Anggaran Belum Cair</p>
+                            </div>
+                            <h2 class="text-3xl font-extrabold text-gray-800 tracking-tight">${formatRp(totalAnggaran - totalRealisasi)}</h2>
+                            <p class="text-sm text-gray-500 mt-2 font-medium">Menunggu pelaporan SPJ Peneliti</p>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <h3 class="text-lg font-extrabold text-gray-800 flex items-center gap-2">
+                                <i data-lucide="users" class="text-emerald-500 w-5 h-5"></i> Monitoring Personel & Proyek
+                            </h3>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-[18px] h-[18px]"></i>
+                                <input type="text" placeholder="Cari peneliti/proyek..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm w-full sm:w-64 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all font-medium" />
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-gray-50/80 text-gray-500 text-[11px] uppercase tracking-wider font-extrabold border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-6 py-4">Tim Peneliti</th>
+                                        <th class="px-6 py-4">Fokus Riset/Proyek</th>
+                                        <th class="px-6 py-4 text-right">Plafon Anggaran</th>
+                                        <th class="px-6 py-4 text-right">Realisasi (Rp)</th>
+                                        <th class="px-6 py-4">Progres</th>
+                                        <th class="px-6 py-4 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-50">
+                                    ${tableRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </main>
+            `;
+        };
+
+        const renderPenelitiPage = () => {
+            if (!currentUser) return '';
+            
+            const sisaAnggaran = currentUser.anggaran - currentUser.realisasi;
+            const year = new Date().getFullYear();
+
+            let trxRows = mockTransactions.map(trx => `
+                <tr class="hover:bg-gray-50/50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-gray-500 font-bold">${trx.tanggal}</td>
+                    <td class="px-6 py-4">
+                        <p class="font-extrabold text-gray-800 text-[13px]">${trx.penerima}</p>
+                        <p class="text-xs font-medium text-gray-500 mt-0.5">${trx.uraian}</p>
+                        <span class="inline-block mt-2 px-2.5 py-1 bg-gray-100 rounded-md text-[10px] font-extrabold text-gray-600 uppercase tracking-wider">${trx.kategori}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-extrabold text-gray-800 text-[15px]">${formatRp(trx.jumlahBruto)}</td>
+                    <td class="px-6 py-4 text-center">
+                        ${trx.hasPhoto ? `
+                            <button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors mx-auto">
+                                <i data-lucide="image" class="w-3.5 h-3.5"></i> Lihat Nota
+                            </button>
+                        ` : `
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-400 rounded-xl text-xs font-bold mx-auto border border-gray-200/60 border-dashed">
+                                <i data-lucide="camera" class="w-3.5 h-3.5"></i> Kosong
+                            </span>
+                        `}
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors" title="Edit Data">
+                                <i data-lucide="edit" class="w-[18px] h-[18px]"></i>
+                            </button>
+                            <button class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title="Hapus Data">
+                                <i data-lucide="trash-2" class="w-[18px] h-[18px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="pb-20">
+                    ${getHeaderHTML()}
+                    
+                    <!-- Banner Profile -->
+                    <div class="bg-white border-b border-gray-200">
+                        <div class="max-w-7xl mx-auto">
+                            <div class="relative bg-gradient-to-r from-emerald-800 to-teal-700 p-6 sm:p-8 lg:rounded-b-3xl shadow-md overflow-hidden text-white">
+                                <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+                                <div class="absolute -bottom-24 -right-24 opacity-5">
+                                    <i data-lucide="building" class="w-[300px] h-[300px]"></i>
+                                </div>
+                                
+                                <div class="relative z-10 flex flex-col lg:flex-row justify-between lg:items-end gap-6">
+                                    <div class="max-w-2xl">
+                                        <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-[10px] font-extrabold tracking-widest mb-4 border border-white/20 uppercase">
+                                            Workspace: ${currentUser.roleName}
+                                        </span>
+                                        <h1 class="text-2xl sm:text-3xl font-extrabold mb-3 leading-tight">${currentUser.project}</h1>
+                                        <div class="flex items-center gap-4 text-emerald-100 font-medium text-sm">
+                                            <span class="flex items-center gap-1.5"><i data-lucide="file-text" class="w-4 h-4"></i> PRJ-${year}-${currentUser.id}</span>
+                                            <span class="w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
+                                            <span>NIDN: ${currentUser.nidn}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 bg-white/10 backdrop-blur-md p-5 rounded-3xl border border-white/20">
+                                        <div>
+                                            <p class="text-[10px] font-extrabold text-emerald-200 uppercase tracking-widest mb-1.5">Total Pagu Dana</p>
+                                            <p class="font-extrabold text-xl">${formatRp(currentUser.anggaran)}</p>
+                                        </div>
+                                        <div class="hidden sm:block h-12 w-px bg-white/20"></div>
+                                        <div>
+                                            <p class="text-[10px] font-extrabold text-emerald-200 uppercase tracking-widest mb-1.5">Sisa Saldo Kas</p>
+                                            <p class="font-extrabold text-xl ${sisaAnggaran < 0 ? 'text-red-300' : 'text-white'}">${formatRp(sisaAnggaran)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <main class="max-w-7xl mx-auto p-4 sm:p-6 lg:px-8 space-y-8 mt-4">
+                        <!-- Form Input -->
+                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                            <div class="p-5 sm:px-8 sm:py-6 border-b border-gray-100 bg-gray-50/50">
+                                <h3 class="text-lg font-extrabold text-gray-800">Catat Pengeluaran Baru</h3>
+                                <p class="text-sm text-gray-500 mt-1 font-medium">Lengkapi form di bawah sesuai dengan bukti nota fisik/digital.</p>
+                            </div>
+                            <div class="p-5 sm:p-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
+                                <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label class="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider">Penerima Uang (Toko/Vendor/Nama)</label>
+                                        <input type="text" class="w-full p-3.5 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all font-medium" placeholder="Contoh: CV. Mataram Karya" />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label class="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider">Mata Anggaran (Kategori)</label>
+                                        <select class="w-full p-3.5 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer font-medium">
+                                            <option>Biaya Pembelian Bahan Habis Pakai</option>
+                                            <option>Honorarium / Biaya Gaji</option>
+                                            <option>Biaya Perjalanan Dinas / Tiket / Penginapan</option>
+                                            <option>Sewa Peralatan / Lab</option>
+                                            <option>Belanja Modal (Peralatan & Mesin)</option>
+                                        </select>
+                                    </div>
+                                    <div class="md:col-span-2 space-y-2">
+                                        <label class="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider">Uraian Pekerjaan / Deskripsi Barang</label>
+                                        <input type="text" class="w-full p-3.5 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all font-medium" placeholder="Contoh: Pembelian Modul Sensor Suhu, Kabel 22AWG..." />
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-5">
+                                        <div class="space-y-2">
+                                            <label class="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider">Volume / Kuantitas</label>
+                                            <input type="number" class="w-full p-3.5 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all font-medium" placeholder="1" />
+                                        </div>
+                                        <div class="space-y-2">
+                                            <label class="text-[11px] font-extrabold text-gray-700 uppercase tracking-wider">Harga Satuan</label>
+                                            <div class="relative">
+                                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-extrabold">Rp</span>
+                                                <input type="number" class="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all font-medium" placeholder="0" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Upload Area -->
+                                <div class="lg:col-span-1 border-2 border-dashed border-emerald-200 rounded-3xl flex flex-col items-center justify-center p-6 bg-emerald-50/50 hover:bg-emerald-50 hover:border-emerald-400 transition-all cursor-pointer group h-full min-h-[180px]">
+                                    <div class="w-14 h-14 bg-white rounded-2xl shadow-sm text-emerald-500 group-hover:scale-110 group-hover:shadow-md transition-all flex items-center justify-center mb-4">
+                                        <i data-lucide="upload-cloud" class="w-7 h-7"></i>
+                                    </div>
+                                    <p class="text-sm font-extrabold text-emerald-800 text-center">Unggah Bukti Nota</p>
+                                    <p class="text-xs text-gray-500 font-medium text-center mt-2 leading-relaxed">Seret & lepas file ke sini<br/>(JPG/PNG/PDF Max 5MB)</p>
+                                    <input type="file" class="hidden" />
+                                </div>
+
+                                <div class="lg:col-span-4 flex justify-end pt-5 border-t border-gray-100">
+                                    <button class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3.5 rounded-2xl flex items-center gap-2 text-sm font-extrabold shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-200 hover:-translate-y-0.5">
+                                        <i data-lucide="plus-circle" class="w-5 h-5"></i> Simpan Pencatatan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Table Transaksi -->
+                        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div class="p-5 sm:px-8 sm:py-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h3 class="text-lg font-extrabold text-gray-800">Riwayat Pengeluaran Proyek</h3>
+                                    <p class="text-sm text-gray-500 mt-1 font-medium">Daftar pencatatan nota yang telah diinput ke dalam sistem.</p>
+                                </div>
+                                <button class="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-5 py-2.5 rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 transition-colors border border-emerald-100">
+                                    <i data-lucide="printer" class="w-[18px] h-[18px]"></i> Cetak Laporan Keuangan
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50/80 text-gray-500 text-[11px] uppercase tracking-wider font-extrabold border-b border-gray-100">
+                                        <tr>
+                                            <th class="px-6 py-5">Tgl Input</th>
+                                            <th class="px-6 py-5">Rincian & Penerima</th>
+                                            <th class="px-6 py-5 text-right">Nilai Bruto</th>
+                                            <th class="px-6 py-5 text-center">Lampiran</th>
+                                            <th class="px-6 py-5 text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        ${trxRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+        };
+
+        // --- FUNGSI RENDER UTAMA ---
+        const renderApp = () => {
+            const appDiv = document.getElementById('app');
+            let content = '';
+
+            if (activeRole === 'selector') {
+                content = renderSelectorPage();
+            } else if (activeRole === 'admin') {
+                content = renderAdminPage();
+            } else if (activeRole === 'peneliti') {
+                content = renderPenelitiPage();
+            }
+
+            appDiv.innerHTML = content;
+            renderIcons(); // Memanggil ulang lucide icons setelah merender HTML baru
+        };
+
+        // Inisialisasi awal
+        window.onload = () => {
+            renderApp();
+        };
+
+    </script>
+</body>
+</html>
