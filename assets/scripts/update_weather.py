@@ -2,6 +2,11 @@ import os
 import requests
 import pandas as pd
 from datetime import datetime, timezone, timedelta
+import urllib3.util.connection as urllib3_cn
+import socket
+
+# Force IPv4 to prevent Windows/Miniconda TimeoutErrors
+urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
 
 # 1. Define Coordinates and File Name
 centroid_lat, centroid_lon = -2.792159, 104.600073
