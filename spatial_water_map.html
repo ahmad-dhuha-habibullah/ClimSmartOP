@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Water Metrics | ClimSmartOP</title>
+    <link rel="icon" href="ClimSmart-WISE.png" type="image/png">
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+            colors: {
+              palm: { 50: '#f2f7ec', 100: '#e1efd3', 500: '#639922', 700: '#3B6D11', 800: '#2d530d' },
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- MapLibre GL JS -->
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { margin: 0; padding: 0; background: #f3f4f6; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        .card-light {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Map tooltip */
+        .mapboxgl-popup-content {
+            background: white;
+            color: #111827;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .mapboxgl-popup-tip { border-top-color: white !important; }
+        .mapboxgl-popup-close-button { color: #6b7280; right: 8px; top: 8px; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #3B6D11;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(59, 109, 17, 0.3);
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body class="text-gray-900 antialiased font-sans">
+    <div id="map"></div>
+
+    <!-- Top Left: Logo & Info -->
+    <div class="absolute top-5 left-5 z-10 card-light rounded-2xl p-4 flex items-center gap-4 max-w-sm">
+        <img src="ClimSmart-WISE.png" alt="Logo" class="h-12 object-contain rounded-lg">
+        <div>
+            <h1 class="text-lg font-extrabold tracking-tight text-gray-900 leading-tight">ClimSmart-WISE</h1>
+            <p class="text-[10px] text-palm-700 font-bold tracking-wider uppercase mt-0.5">Spatial Metrics</p>
+        </div>
+    </div>
+
+    <!-- Top Right: Layer Controls & Metrics -->
+    <div class="absolute top-5 right-5 z-10 card-light rounded-2xl p-5 w-80">
+        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Map Layer</h2>
+        
+        <div class="flex bg-gray-100 rounded-lg p-1 mb-5 border border-gray-200">
+            <button id="btn-deficit" onclick="setLayer('deficit')" class="flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200">Water Deficit</button>
+            <button id="btn-requirement" onclick="setLayer('requirement')" class="flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent">Requirement</button>
+        </div>
+
+        <div class="mb-5">
+            <div class="flex justify-between items-end mb-1">
+                <span id="legend-title" class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Deficit Severity (mm/day)</span>
+            </div>
+            <div id="legend-gradient" class="h-2 rounded-full w-full bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-red-900 mb-1"></div>
+            <div id="legend-labels" class="flex justify-between text-[10px] text-gray-500 font-medium">
+                <span>0</span><span>2</span><span>4</span><span>6+</span>
+            </div>
+        </div>
+        
+        <div class="border-t border-gray-200 pt-4">
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Cell Metrics</h2>
+            <p id="metrics-instruction" class="text-xs text-gray-500 italic">Click a grid cell on the map to view data.</p>
+            <div id="metrics-data" class="hidden grid grid-cols-2 gap-3">
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Avg Deficit</div>
+                    <div id="metric-avg-def" class="text-xl font-bold text-red-600 mt-1">--</div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Max Deficit</div>
+                    <div id="metric-max-def" class="text-xl font-bold text-red-700 mt-1">--</div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Avg Req</div>
+                    <div id="metric-avg-req" class="text-xl font-bold text-blue-600 mt-1">--</div>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Total Deficit</div>
+                    <div id="metric-tot-def" class="text-xl font-bold text-orange-600 mt-1">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Panel: Windy-style Meteogram & Slider -->
+    <div class="absolute bottom-0 left-0 w-full z-10 card-light pt-4 pb-6 px-6">
+        <!-- Date display and play controls -->
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-4">
+                <button id="play-btn" class="w-10 h-10 rounded-full bg-palm-700 hover:bg-palm-600 text-white flex items-center justify-center transition-all shadow-md border border-palm-500">
+                    <i class="ti ti-player-play-filled"></i>
+                </button>
+                <div>
+                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Current Forecast Date</div>
+                    <div id="date-display" class="text-xl font-extrabold text-palm-700 tracking-tight">Loading...</div>
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 font-semibold flex items-center gap-2">
+                <i class="ti ti-chart-area-line"></i> APSIM Gridded Model
+            </div>
+        </div>
+        
+        <!-- Timeseries Chart (Meteogram) -->
+        <div class="w-full h-32 relative mb-2">
+            <div id="chart-cursor" class="absolute top-0 bottom-0 w-0.5 bg-palm-500/50 shadow-[0_0_8px_rgba(99,153,34,0.5)] z-20 pointer-events-none hidden transition-all duration-200" style="left: 0%;"></div>
+            <canvas id="tsChart" class="w-full h-full"></canvas>
+            <div id="chart-overlay-msg" class="absolute inset-0 flex items-center justify-center text-sm text-gray-500 font-medium z-10 pointer-events-none bg-white/50 backdrop-blur-[2px]">
+                Click a grid cell on the map to display its meteogram across the entire forecast timeline
+            </div>
+        </div>
+
+        <!-- Time Slider -->
+        <div class="w-full px-2 relative z-30">
+            <input type="range" id="time-slider" min="0" max="0" value="0" step="1">
+        </div>
+    </div>
+
+    <script>
+        // Setup Map with a Hybrid Satellite basemap (ESRI)
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                'version': 8,
+                'sources': {
+                    'satellite': {
+                        'type': 'raster',
+                        'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                        'tileSize': 256
+                    },
+                    'labels': {
+                        'type': 'raster',
+                        'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
+                        'tileSize': 256
+                    }
+                },
+                'layers': [
+                    {
+                        'id': 'satellite-layer',
+                        'type': 'raster',
+                        'source': 'satellite',
+                        'minzoom': 0,
+                        'maxzoom': 22
+                    },
+                    {
+                        'id': 'labels-layer',
+                        'type': 'raster',
+                        'source': 'labels',
+                        'minzoom': 0,
+                        'maxzoom': 22
+                    }
+                ]
+            },
+            center: [105.4664, -2.9989],
+            zoom: 13,
+            pitch: 0,
+            bearing: 0
+        });
+
+        let geojsonData = null;
+        let timeIndex = 0;
+        let currentLayer = 'deficit';
+        let datesArray = [];
+        let chartInstance = null;
+
+        // Initialize Chart
+        const ctx = document.getElementById('tsChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                layout: { padding: { left: 10, right: 10, top: 10, bottom: 0 } },
+                scales: {
+                    x: { 
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: '#9ca3af', 
+                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 9 },
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 10,
+                            callback: function(value, index, values) {
+                                // Just show the day and month
+                                const d = new Date(this.getLabels()[index]);
+                                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            }
+                        }
+                    },
+                    y: { 
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Deficit (mm/day)', color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
+                        grid: { color: 'rgba(0,0,0,0.05)', tickLength: 0 },
+                        border: { display: false, dash: [4, 4] },
+                        ticks: { color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: '600' }, padding: 8 }
+                    },
+                    y1: {
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Req (Eo)', color: '#3b82f6', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { color: '#3b82f6', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: '600' }, padding: 8 }
+                    }
+                },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        titleColor: '#111827',
+                        bodyColor: '#374151',
+                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold', size: 12 },
+                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold', size: 13 },
+                        borderColor: 'rgba(0,0,0,0.05)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        boxPadding: 4,
+                        callbacks: {
+                            title: function(context) {
+                                const d = new Date(context[0].label);
+                                return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        map.on('load', async () => {
+            // Load GeoJSON
+            try {
+                const response = await fetch('assets/water_metrics_grid.geojson');
+                if (!response.ok) throw new Error("File not found");
+                geojsonData = await response.json();
+                
+                if (geojsonData.features.length > 0) {
+                    const firstProps = geojsonData.features[0].properties;
+                    datesArray = typeof firstProps.dates === 'string' ? JSON.parse(firstProps.dates) : firstProps.dates;
+                    const slider = document.getElementById('time-slider');
+                    slider.max = datesArray.length - 1;
+                    slider.value = 0;
+                    updateDateDisplay();
+                }
+
+                map.addSource('grid', {
+                    type: 'geojson',
+                    data: geojsonData
+                });
+
+                // Add grid layer underneath the labels so boundaries/names show on top
+                map.addLayer({
+                    id: 'grid-layer',
+                    type: 'fill',
+                    source: 'grid',
+                    paint: {
+                        'fill-color': getFillColorExpression(),
+                        'fill-opacity': 0.75
+                    }
+                }, 'labels-layer');
+
+                // Interaction
+                map.on('click', 'grid-layer', (e) => {
+                    const props = e.features[0].properties;
+                    const dts = typeof props.dates === 'string' ? JSON.parse(props.dates) : props.dates;
+                    
+                    const def = [];
+                    const req = [];
+                    for(let i=0; i<dts.length; i++) {
+                        def.push(props['def_' + i]);
+                        req.push(props['req_' + i]);
+                    }
+                    
+                    updateMetrics(req, def);
+                    updateChart(dts, req, def);
+                    
+                    new maplibregl.Popup()
+                        .setLngLat(e.lngLat)
+                        .setHTML(`
+                            <div class="text-xs">
+                                <div class="font-bold text-gray-900 mb-1 border-b border-gray-200 pb-1">Grid Cell ${props.id}</div>
+                                <div class="grid grid-cols-2 gap-2 mt-2">
+                                    <div class="text-gray-500">Lat:</div><div class="text-right text-gray-900 font-bold">${props.lat.toFixed(5)}</div>
+                                    <div class="text-gray-500">Lon:</div><div class="text-right text-gray-900 font-bold">${props.lon.toFixed(5)}</div>
+                                </div>
+                            </div>
+                        `)
+                        .addTo(map);
+                });
+
+                map.on('mouseenter', 'grid-layer', () => map.getCanvas().style.cursor = 'pointer');
+                map.on('mouseleave', 'grid-layer', () => map.getCanvas().style.cursor = '');
+
+            } catch (err) {
+                console.error("Error loading GeoJSON", err);
+                document.getElementById('date-display').innerText = "Data missing";
+            }
+        });
+
+        window.setLayer = function(layer) {
+            currentLayer = layer;
+            const btnDef = document.getElementById('btn-deficit');
+            const btnReq = document.getElementById('btn-requirement');
+            
+            if (layer === 'deficit') {
+                btnDef.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
+                btnReq.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
+                
+                document.getElementById('legend-title').innerText = "Deficit Severity (mm/day)";
+                document.getElementById('legend-gradient').className = "h-2 rounded-full w-full bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-red-900 mb-1";
+                document.getElementById('legend-labels').innerHTML = "<span>0</span><span>0.5</span><span>1.0</span><span>2.0+</span>";
+            } else {
+                btnReq.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
+                btnDef.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
+                
+                document.getElementById('legend-title').innerText = "Water Requirement (mm/day)";
+                document.getElementById('legend-gradient').className = "h-2 rounded-full w-full bg-gradient-to-r from-blue-300 via-blue-500 to-blue-800 mb-1";
+                document.getElementById('legend-labels').innerHTML = "<span>0</span><span>4</span><span>8</span><span>12+</span>";
+            }
+
+            if (map.getLayer('grid-layer')) {
+                map.setPaintProperty('grid-layer', 'fill-color', getFillColorExpression());
+            }
+        }
+
+        function getFillColorExpression() {
+            // Read the flattened property based on timeIndex to avoid MapLibre array parsing errors
+            const propName = currentLayer === 'deficit' ? 'def_' + timeIndex : 'req_' + timeIndex;
+            const valExpr = ['get', propName];
+            
+            if (currentLayer === 'deficit') {
+                return [
+                    'interpolate', ['linear'], valExpr,
+                    0, '#22c55e', 0.5, '#facc15', 1.0, '#ef4444', 2.0, '#7f1d1d'
+                ];
+            } else {
+                return [
+                    'interpolate', ['linear'], valExpr,
+                    0, '#93c5fd', 6, '#3b82f6', 12, '#1e40af'
+                ];
+            }
+        }
+
+        // Time slider logic
+        const slider = document.getElementById('time-slider');
+        slider.addEventListener('input', (e) => {
+            timeIndex = parseInt(e.target.value);
+            updateDateDisplay();
+            if (map.getLayer('grid-layer')) {
+                map.setPaintProperty('grid-layer', 'fill-color', getFillColorExpression());
+            }
+            updateChartCursor();
+        });
+
+        function updateDateDisplay() {
+            if (datesArray.length > 0) {
+                const d = new Date(datesArray[timeIndex]);
+                const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                document.getElementById('date-display').innerText = formatted;
+            }
+        }
+
+        function updateChartCursor() {
+            const cursor = document.getElementById('chart-cursor');
+            if (datesArray.length > 0 && chartInstance.data.datasets.length > 0) {
+                cursor.style.display = 'block';
+                const percentage = (timeIndex / (datesArray.length - 1)) * 100;
+                cursor.style.left = `calc(${percentage}% - 1px)`; 
+            }
+        }
+
+        function updateMetrics(req, def) {
+            document.getElementById('metrics-instruction').classList.add('hidden');
+            document.getElementById('metrics-data').classList.remove('hidden');
+            
+            const avgDef = (def.reduce((a,b)=>a+b,0) / def.length).toFixed(2);
+            const maxDef = Math.max(...def).toFixed(2);
+            const avgReq = (req.reduce((a,b)=>a+b,0) / req.length).toFixed(2);
+            const totDef = def.reduce((a,b)=>a+b,0).toFixed(1);
+            
+            document.getElementById('metric-avg-def').innerText = avgDef;
+            document.getElementById('metric-max-def').innerText = maxDef;
+            document.getElementById('metric-avg-req').innerText = avgReq;
+            document.getElementById('metric-tot-def').innerText = totDef;
+        }
+
+        function updateChart(labels, req, def) {
+            document.getElementById('chart-overlay-msg').style.display = 'none';
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets = [
+                {
+                    type: 'bar',
+                    label: 'Requirement (Eo)',
+                    data: req,
+                    yAxisID: 'y1',
+                    backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                    hoverBackgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.9
+                },
+                {
+                    type: 'line',
+                    label: 'Water Deficit',
+                    data: def,
+                    yAxisID: 'y',
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: '#ef4444',
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2,
+                    fill: true,
+                    tension: 0
+                }
+            ];
+            chartInstance.update();
+            updateChartCursor();
+        }
+
+        // Play button
+        let playInterval;
+        document.getElementById('play-btn').addEventListener('click', (e) => {
+            const btn = e.currentTarget;
+            const icon = btn.querySelector('i');
+            
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+                icon.className = 'ti ti-player-play-filled';
+                btn.classList.remove('bg-red-600', 'hover:bg-red-500', 'border-red-500');
+                btn.classList.add('bg-palm-700', 'hover:bg-palm-600', 'border-palm-500');
+            } else {
+                icon.className = 'ti ti-player-pause-filled';
+                btn.classList.remove('bg-palm-700', 'hover:bg-palm-600', 'border-palm-500');
+                btn.classList.add('bg-red-600', 'hover:bg-red-500', 'border-red-500');
+                
+                playInterval = setInterval(() => {
+                    timeIndex++;
+                    if (timeIndex >= datesArray.length) timeIndex = 0;
+                    slider.value = timeIndex;
+                    slider.dispatchEvent(new Event('input'));
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>
