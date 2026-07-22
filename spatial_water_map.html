@@ -1,43 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spatial Water Metrics | ClimSmartOP</title>
     <link rel="icon" href="ClimSmart-WISE.png" type="image/png">
-    
+
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
-            colors: {
-              palm: { 50: '#f2f7ec', 100: '#e1efd3', 500: '#639922', 700: '#3B6D11', 800: '#2d530d' },
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        palm: { 50: '#f2f7ec', 100: '#e1efd3', 500: '#639922', 700: '#3B6D11', 800: '#2d530d' },
+                    }
+                }
             }
-          }
         }
-      }
     </script>
 
     <!-- MapLibre GL JS -->
     <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
+
+    <!-- Turf.js for contouring -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; background: #f3f4f6; overflow: hidden; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f3f4f6;
+            overflow: hidden;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
         .card-light {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(12px);
@@ -45,7 +62,7 @@
             border: 1px solid rgba(0, 0, 0, 0.05);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        
+
         /* Map tooltip */
         .mapboxgl-popup-content {
             background: white;
@@ -56,14 +73,23 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        .mapboxgl-popup-tip { border-top-color: white !important; }
-        .mapboxgl-popup-close-button { color: #6b7280; right: 8px; top: 8px; }
-        
+
+        .mapboxgl-popup-tip {
+            border-top-color: white !important;
+        }
+
+        .mapboxgl-popup-close-button {
+            color: #6b7280;
+            right: 8px;
+            top: 8px;
+        }
+
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
             background: transparent;
         }
+
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
             height: 6px;
@@ -71,6 +97,7 @@
             background: #e5e7eb;
             border-radius: 4px;
         }
+
         input[type=range]::-webkit-slider-thumb {
             height: 18px;
             width: 18px;
@@ -84,6 +111,7 @@
         }
     </style>
 </head>
+
 <body class="text-gray-900 antialiased font-sans">
     <div id="map"></div>
 
@@ -92,51 +120,104 @@
         <img src="ClimSmart-WISE.png" alt="Logo" class="h-12 object-contain rounded-lg">
         <div>
             <h1 class="text-lg font-extrabold tracking-tight text-gray-900 leading-tight">ClimSmart-WISE</h1>
-            <p class="text-[10px] text-palm-700 font-bold tracking-wider uppercase mt-0.5">Spatial Metrics</p>
         </div>
     </div>
 
     <!-- Top Right: Layer Controls & Metrics -->
-    <div class="absolute top-5 right-5 z-10 card-light rounded-2xl p-5 w-80">
-        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Map Layer</h2>
-        
-        <div class="flex bg-gray-100 rounded-lg p-1 mb-5 border border-gray-200">
-            <button id="btn-deficit" onclick="setLayer('deficit')" class="flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200">Water Deficit</button>
-            <button id="btn-requirement" onclick="setLayer('requirement')" class="flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent">Requirement</button>
+    <div
+        class="absolute top-5 right-5 z-10 card-light rounded-2xl p-4 sm:p-5 w-[calc(100vw-40px)] sm:w-80 transition-all duration-300">
+        <div class="flex justify-between items-start">
+            <div class="w-full pr-4">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Map Layer</h2>
+                <!-- Persistent Legend -->
+                <div>
+                    <div class="flex justify-between items-end mb-1">
+                        <span id="legend-title"
+                            class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Deficit
+                            Severity (mm/month)</span>
+                    </div>
+                    <div id="legend-gradient"
+                        class="h-2 rounded-full w-full bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-red-900 mb-1">
+                    </div>
+                    <div id="legend-labels" class="flex justify-between text-[10px] text-gray-500 font-medium">
+                        <span>0</span><span>50</span><span>100</span><span>200+</span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleMapLayer()"
+                class="text-gray-400 hover:text-palm-700 bg-gray-50 hover:bg-gray-100 rounded p-1 transition-colors flex-shrink-0 mt-0.5">
+                <i id="toggle-layer-icon" class="ti ti-chevron-up"></i>
+            </button>
         </div>
 
-        <div class="mb-5">
-            <div class="flex justify-between items-end mb-1">
-                <span id="legend-title" class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Deficit Severity (mm/day)</span>
+        <div id="map-layer-content"
+            class="transition-all duration-300 origin-top overflow-hidden max-h-[1000px] opacity-100 mt-4">
+            <div class="flex bg-gray-100 rounded-lg p-1 mb-4 border border-gray-200">
+                <button id="btn-deficit" onclick="setLayer('deficit')"
+                    class="flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200">Water
+                    Deficit</button>
+                <button id="btn-requirement" onclick="setLayer('requirement')"
+                    class="flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent">Requirement</button>
             </div>
-            <div id="legend-gradient" class="h-2 rounded-full w-full bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-red-900 mb-1"></div>
-            <div id="legend-labels" class="flex justify-between text-[10px] text-gray-500 font-medium">
-                <span>0</span><span>2</span><span>4</span><span>6+</span>
+            <div class="border-t border-gray-200 pt-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cell Metrics</h2>
+                    <div class="flex space-x-1 text-xs bg-gray-100 p-1 rounded">
+                        <button id="metric-tab-forecast" onclick="setMode('forecast')"
+                            class="px-2 py-1 rounded text-gray-500 hover:text-palm-700"
+                            title="Click to zoom to 2026 forecast">Forecast</button>
+                        <button id="metric-tab-history" onclick="setMode('history')"
+                            class="px-2 py-1 rounded bg-white text-palm-700 shadow-sm">History</button>
+                    </div>
+                </div>
+                <p id="metrics-instruction" class="text-xs text-gray-500 italic">Click a grid cell on the map to view
+                    data.
+                </p>
+                <div id="metrics-data" class="hidden grid grid-cols-2 gap-3">
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wide">Avg Deficit</div>
+                        <div id="metric-avg-def" class="text-xl font-bold text-red-600 mt-1">--</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wide">Max Deficit</div>
+                        <div id="metric-max-def" class="text-xl font-bold text-red-700 mt-1">--</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wide">Avg Req</div>
+                        <div id="metric-avg-req" class="text-xl font-bold text-blue-600 mt-1">--</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <div class="text-[9px] text-gray-500 uppercase tracking-wide">Total Deficit</div>
+                        <div id="metric-tot-def" class="text-xl font-bold text-orange-600 mt-1">--</div>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="border-t border-gray-200 pt-4">
-            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Cell Metrics</h2>
-            <p id="metrics-instruction" class="text-xs text-gray-500 italic">Click a grid cell on the map to view data.</p>
-            <div id="metrics-data" class="hidden grid grid-cols-2 gap-3">
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Avg Deficit</div>
-                    <div id="metric-avg-def" class="text-xl font-bold text-red-600 mt-1">--</div>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Max Deficit</div>
-                    <div id="metric-max-def" class="text-xl font-bold text-red-700 mt-1">--</div>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Avg Req</div>
-                    <div id="metric-avg-req" class="text-xl font-bold text-blue-600 mt-1">--</div>
-                </div>
-                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <div class="text-[9px] text-gray-500 uppercase tracking-wide">Total Deficit</div>
-                    <div id="metric-tot-def" class="text-xl font-bold text-orange-600 mt-1">--</div>
-                </div>
-            </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Suggestion Modal -->
+    <div id="action-plan-modal"
+        class="fixed top-1/2 left-1/2 z-50 card-light rounded-2xl p-6 w-[calc(100vw-40px)] sm:w-96 shadow-2xl transition-all duration-300 transform -translate-x-1/2 -translate-y-1/2 scale-95 opacity-0 pointer-events-none border-t-4 border-palm-500">
+        <div class="flex justify-between items-start mb-3">
+            <h3 class="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <i id="action-plan-icon" class="ti ti-list-details text-gray-500 text-lg"></i> Warning
+            </h3>
+            <button onclick="closeActionPlan()"
+                class="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-200 rounded p-1 transition-colors">
+                <i class="ti ti-x"></i>
+            </button>
         </div>
+        <p id="action-plan-text" class="text-xs text-gray-600 leading-relaxed mb-4">
+            Select a grid cell to generate action plans based on forecasted water deficit.
+        </p>
+        <button id="btn-see-forecast" onclick="seeForecastAction()"
+            class="w-full bg-palm-700 text-white hover:bg-palm-800 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+            <i class="ti ti-chart-area-line text-sm"></i> Switch to Forecast View
+        </button>
     </div>
 
     <!-- Bottom Panel: Windy-style Meteogram & Slider -->
@@ -144,11 +225,13 @@
         <!-- Date display and play controls -->
         <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-4">
-                <button id="play-btn" class="w-10 h-10 rounded-full bg-palm-700 hover:bg-palm-600 text-white flex items-center justify-center transition-all shadow-md border border-palm-500">
+                <button id="play-btn"
+                    class="w-10 h-10 rounded-full bg-palm-700 hover:bg-palm-600 text-white flex items-center justify-center transition-all shadow-md border border-palm-500">
                     <i class="ti ti-player-play-filled"></i>
                 </button>
                 <div>
-                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Current Forecast Date</div>
+                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Current Forecast Date
+                    </div>
                     <div id="date-display" class="text-xl font-extrabold text-palm-700 tracking-tight">Loading...</div>
                 </div>
             </div>
@@ -156,188 +239,309 @@
                 <i class="ti ti-chart-area-line"></i> APSIM Gridded Model
             </div>
         </div>
-        
+
         <!-- Timeseries Chart (Meteogram) -->
-        <div class="w-full h-32 relative mb-2">
-            <div id="chart-cursor" class="absolute top-0 bottom-0 w-0.5 bg-palm-500/50 shadow-[0_0_8px_rgba(99,153,34,0.5)] z-20 pointer-events-none hidden transition-all duration-200" style="left: 0%;"></div>
-            <canvas id="tsChart" class="w-full h-full"></canvas>
-            <div id="chart-overlay-msg" class="absolute inset-0 flex items-center justify-center text-sm text-gray-500 font-medium z-10 pointer-events-none bg-white/50 backdrop-blur-[2px]">
-                Click a grid cell on the map to display its meteogram across the entire forecast timeline
+        <div class="flex justify-between items-center mb-1">
+            <div class="flex bg-gray-100 rounded-md p-0.5 border border-gray-200">
+                <button id="tab-forecast" onclick="setMode('forecast')"
+                    class="text-xs py-1 px-3 rounded font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200">Forecast
+                    (Zoom)</button>
+                <button id="tab-historical" onclick="setMode('history')"
+                    class="text-xs py-1 px-3 rounded font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent">Historical
+                    (Full)</button>
             </div>
         </div>
+        <div class="w-full h-32 relative mb-2 mt-1">
+            <canvas id="tsChart" class="w-full h-full"></canvas>
+            <div id="chart-overlay-msg"
+                class="absolute inset-0 flex items-center justify-center text-sm text-gray-500 font-medium z-10 pointer-events-none bg-white/50 backdrop-blur-[2px]">
+                Click a grid cell on the map to display its meteogram
+            </div>
+            <div class="flex h-screen overflow-hidden">
+                <!-- Main Map Area -->
+                <div class="flex-grow relative">
+                    <div id="map"></div>
 
-        <!-- Time Slider -->
-        <div class="w-full px-2 relative z-30">
-            <input type="range" id="time-slider" min="0" max="0" value="0" step="1">
-        </div>
-    </div>
+                    <!-- Floating Timestamp (South East) -->
+                    <div id="map-timestamp"
+                        class="absolute bottom-8 right-8 bg-white/90 px-4 py-2 rounded-lg shadow-lg text-3xl font-bold text-gray-800 z-10 backdrop-blur-sm"
+                        style="pointer-events: none;"></div>
 
-    <script>
-        // Setup Map with a Hybrid Satellite basemap (ESRI)
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: {
-                'version': 8,
-                'sources': {
-                    'satellite': {
-                        'type': 'raster',
-                        'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                        'tileSize': 256
-                    },
-                    'labels': {
-                        'type': 'raster',
-                        'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
-                        'tileSize': 256
-                    }
-                },
-                'layers': [
-                    {
-                        'id': 'satellite-layer',
-                        'type': 'raster',
-                        'source': 'satellite',
-                        'minzoom': 0,
-                        'maxzoom': 22
-                    },
-                    {
-                        'id': 'labels-layer',
-                        'type': 'raster',
-                        'source': 'labels',
-                        'minzoom': 0,
-                        'maxzoom': 22
-                    }
-                ]
-            },
-            center: [105.4664, -2.9989],
-            zoom: 13,
-            pitch: 0,
-            bearing: 0
-        });
+                    <!-- Floating Time Controls -->
+                </div>
 
-        let geojsonData = null;
-        let timeIndex = 0;
-        let currentLayer = 'deficit';
-        let datesArray = [];
-        let chartInstance = null;
+                <!-- Time Slider -->
+                <div class="w-full px-2 relative z-30">
+                    <input type="range" id="time-slider" min="0" max="0" value="0" step="1">
+                </div>
+            </div>
 
-        // Initialize Chart
-        const ctx = document.getElementById('tsChart').getContext('2d');
-        chartInstance = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [] },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                layout: { padding: { left: 10, right: 10, top: 10, bottom: 0 } },
-                scales: {
-                    x: { 
-                        display: true,
-                        grid: { display: false },
-                        ticks: {
-                            color: '#9ca3af', 
-                            font: { family: "'Plus Jakarta Sans', sans-serif", size: 9 },
-                            maxRotation: 0,
-                            autoSkip: true,
-                            maxTicksLimit: 10,
-                            callback: function(value, index, values) {
-                                // Just show the day and month
-                                const d = new Date(this.getLabels()[index]);
-                                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                            }
-                        }
-                    },
-                    y: { 
-                        display: true,
-                        position: 'left',
-                        title: { display: true, text: 'Deficit (mm/day)', color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
-                        grid: { color: 'rgba(0,0,0,0.05)', tickLength: 0 },
-                        border: { display: false, dash: [4, 4] },
-                        ticks: { color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: '600' }, padding: 8 }
-                    },
-                    y1: {
-                        display: true,
-                        position: 'right',
-                        title: { display: true, text: 'Req (Eo)', color: '#3b82f6', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
-                        grid: { display: false },
-                        border: { display: false },
-                        ticks: { color: '#3b82f6', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: '600' }, padding: 8 }
-                    }
-                },
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        titleColor: '#111827',
-                        bodyColor: '#374151',
-                        titleFont: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold', size: 12 },
-                        bodyFont: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold', size: 13 },
-                        borderColor: 'rgba(0,0,0,0.05)',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 8,
-                        displayColors: true,
-                        boxPadding: 4,
-                        callbacks: {
-                            title: function(context) {
-                                const d = new Date(context[0].label);
-                                return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-                            }
+            <script>
+                // Initialize auto-collapse on mobile
+                window.addEventListener('load', () => {
+                    if (window.innerWidth < 640) {
+                        const content = document.getElementById('map-layer-content');
+                        const icon = document.getElementById('toggle-layer-icon');
+                        if (content && icon) {
+                            content.classList.add('max-h-0', 'opacity-0', 'mt-0');
+                            content.classList.remove('max-h-[1000px]', 'opacity-100', 'mt-4');
+                            icon.classList.remove('ti-chevron-up');
+                            icon.classList.add('ti-chevron-down');
                         }
                     }
-                }
-            }
-        });
-
-        map.on('load', async () => {
-            // Load GeoJSON
-            try {
-                const response = await fetch('assets/water_metrics_grid.geojson');
-                if (!response.ok) throw new Error("File not found");
-                geojsonData = await response.json();
-                
-                if (geojsonData.features.length > 0) {
-                    const firstProps = geojsonData.features[0].properties;
-                    datesArray = typeof firstProps.dates === 'string' ? JSON.parse(firstProps.dates) : firstProps.dates;
-                    const slider = document.getElementById('time-slider');
-                    slider.max = datesArray.length - 1;
-                    slider.value = 0;
-                    updateDateDisplay();
-                }
-
-                map.addSource('grid', {
-                    type: 'geojson',
-                    data: geojsonData
                 });
 
-                // Add grid layer underneath the labels so boundaries/names show on top
-                map.addLayer({
-                    id: 'grid-layer',
-                    type: 'fill',
-                    source: 'grid',
-                    paint: {
-                        'fill-color': getFillColorExpression(),
-                        'fill-opacity': 0.75
-                    }
-                }, 'labels-layer');
+                // Setup Map with a Hybrid Satellite basemap (ESRI)
+                const map = new maplibregl.Map({
+                    container: 'map',
+                    style: {
+                        'version': 8,
+                        'sources': {
+                            'satellite': {
+                                'type': 'raster',
+                                'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                                'tileSize': 256
+                            },
+                            'labels': {
+                                'type': 'raster',
+                                'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
+                                'tileSize': 256
+                            }
+                        },
+                        'layers': [
+                            {
+                                'id': 'satellite-layer',
+                                'type': 'raster',
+                                'source': 'satellite',
+                                'minzoom': 0,
+                                'maxzoom': 22
+                            },
+                            {
+                                'id': 'labels-layer',
+                                'type': 'raster',
+                                'source': 'labels',
+                                'minzoom': 0,
+                                'maxzoom': 22
+                            }
+                        ]
+                    },
+                    center: [105.60, -3],
+                    zoom: 8.5,
+                    pitch: 0,
+                    bearing: 0
+                });
 
-                // Interaction
-                map.on('click', 'grid-layer', (e) => {
-                    const props = e.features[0].properties;
-                    const dts = typeof props.dates === 'string' ? JSON.parse(props.dates) : props.dates;
-                    
-                    const def = [];
-                    const req = [];
-                    for(let i=0; i<dts.length; i++) {
-                        def.push(props['def_' + i]);
-                        req.push(props['req_' + i]);
+                let geojsonData = null;
+                let pointsFullData = null;
+                let boundaryData = null;
+                let boundaryPolygon = null;
+
+                let timeIndex = 0;
+                let currentLayer = 'deficit';
+                let datesArray = [];
+                let chartInstance = null;
+                let currentMode = 'history';
+                let currentSelectedCell = null;
+
+                // Initialize Chart
+                const ctx = document.getElementById('tsChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        layout: { padding: { left: 10, right: 10, top: 10, bottom: 0 } },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: { display: false },
+                                ticks: {
+                                    color: '#9ca3af',
+                                    font: { family: "'Plus Jakarta Sans', sans-serif", size: 9 },
+                                    maxRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 10,
+                                    callback: function (value, index, values) {
+                                        const d = new Date(this.getLabels()[index]);
+                                        return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                                    }
+                                }
+                            },
+                            y: {
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Deficit (mm/month)', color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
+                                grid: { color: 'rgba(0,0,0,0.05)', tickLength: 0 },
+                                border: { display: false, dash: [4, 4] },
+                                ticks: { color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: '600' }, padding: 8 }
+                            },
+                            y1: {
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Req (Eo)', color: '#3b82f6', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
+                                grid: { display: false },
+                                border: { display: false },
+                                ticks: { color: '#3b82f6', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: '600' }, padding: 8 }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                titleColor: '#111827',
+                                bodyColor: '#374151',
+                                titleFont: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold', size: 12 },
+                                bodyFont: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold', size: 13 },
+                                borderColor: 'rgba(0,0,0,0.05)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 8,
+                                displayColors: true,
+                                boxPadding: 4,
+                                callbacks: {
+                                    title: function (context) {
+                                        const d = new Date(context[0].label);
+                                        return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                                    }
+                                }
+                            },
+                            annotation: {
+                                annotations: {
+                                    line1: {
+                                        type: 'line',
+                                        xMin: datesArray ? datesArray.findIndex(d => d === '2026-07') : -1,
+                                        xMax: datesArray ? datesArray.findIndex(d => d === '2026-07') : -1,
+                                        borderColor: 'rgba(0, 0, 0, 0.5)',
+                                        borderWidth: 2,
+                                        borderDash: [5, 5],
+                                        label: { display: true, content: 'TODAY', position: 'start' }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    
-                    updateMetrics(req, def);
-                    updateChart(dts, req, def);
-                    
-                    new maplibregl.Popup()
-                        .setLngLat(e.lngLat)
-                        .setHTML(`
+                });
+
+                map.on('load', async () => {
+                    // Load GeoJSON
+                    try {
+                        const responses = await Promise.all([
+                            fetch('assets/water_metrics_grid.geojson'),
+                            fetch('assets/water_metrics_points_full.geojson'),
+                            fetch('assets/boundary.geojson')
+                        ]);
+
+                        geojsonData = await responses[0].json();
+                        pointsFullData = await responses[1].json();
+                        boundaryData = await responses[2].json();
+                        boundaryPolygon = boundaryData.features[0];
+
+                        if (geojsonData.features.length > 0) {
+                            const firstProps = geojsonData.features[0].properties;
+                            datesArray = typeof firstProps.dates === 'string' ? JSON.parse(firstProps.dates) : firstProps.dates;
+                            const slider = document.getElementById('time-slider');
+                            slider.max = datesArray.length - 1;
+                            slider.value = 0;
+                            updateDateDisplay();
+
+                            // Update chart annotation now that datesArray is set
+                            const todayIdx = datesArray.findIndex(d => d === '2026-07');
+                            if (todayIdx !== -1 && chartInstance) {
+                                chartInstance.options.plugins.annotation.annotations.line1.xMin = todayIdx;
+                                chartInstance.options.plugins.annotation.annotations.line1.xMax = todayIdx;
+                                chartInstance.update();
+                            }
+                        }
+
+                        // Generate points from polygons for the heatmap
+                        const pointsData = {
+                            type: 'FeatureCollection',
+                            features: geojsonData.features.map(f => {
+                                const coords = f.geometry.coordinates[0];
+                                const lon = (coords[0][0] + coords[2][0]) / 2;
+                                const lat = (coords[0][1] + coords[2][1]) / 2;
+                                return {
+                                    type: 'Feature',
+                                    geometry: { type: 'Point', coordinates: [lon, lat] },
+                                    properties: f.properties
+                                };
+                            })
+                        };
+
+                        map.addSource('grid', {
+                            type: 'geojson',
+                            data: geojsonData
+                        });
+
+                        map.addSource('points', {
+                            type: 'geojson',
+                            data: pointsData
+                        });
+
+                        map.addSource('boundary', {
+                            type: 'geojson',
+                            data: boundaryData
+                        });
+
+                        // 1. Heatmap Layer (Smooth Shading)
+                        map.addLayer({
+                            id: 'heatmap-layer',
+                            type: 'heatmap',
+                            source: 'points',
+                            paint: {
+                                'heatmap-weight': getHeatmapWeightExpression(),
+                                'heatmap-intensity': 0.5,
+                                'heatmap-color': getHeatmapColorExpression(),
+                                'heatmap-radius': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    5, 10,
+                                    9, 40,
+                                    13, 150
+                                ],
+                                'heatmap-opacity': 0.85
+                            }
+                        }, 'labels-layer');
+
+                        // 2. Boundary Line Layer
+                        map.addLayer({
+                            id: 'boundary-layer',
+                            type: 'line',
+                            source: 'boundary',
+                            paint: {
+                                'line-color': '#111827',
+                                'line-width': 2.5,
+                                'line-dasharray': [2, 2]
+                            }
+                        }, 'labels-layer');
+
+                        // 3. Invisible Grid Layer for Interaction Tooltips!
+                        map.addLayer({
+                            id: 'grid-layer',
+                            type: 'fill',
+                            source: 'grid',
+                            paint: {
+                                'fill-color': '#000000',
+                                'fill-opacity': 0 // completely transparent
+                            }
+                        }, 'labels-layer');
+
+                        // Interaction
+                        map.on('click', 'grid-layer', (e) => {
+                            const props = e.features[0].properties;
+                            const dts = typeof props.dates === 'string' ? JSON.parse(props.dates) : props.dates;
+                            const req = typeof props.requirement === 'string' ? JSON.parse(props.requirement) : props.requirement;
+                            const def = typeof props.deficit === 'string' ? JSON.parse(props.deficit) : props.deficit;
+
+                            currentSelectedCell = { props, dts, req, def };
+
+                            updateMetrics(req, def);
+                            updateChart(dts, req, def);
+
+                            new maplibregl.Popup()
+                                .setLngLat(e.lngLat)
+                                .setHTML(`
                             <div class="text-xs">
                                 <div class="font-bold text-gray-900 mb-1 border-b border-gray-200 pb-1">Grid Cell ${props.id}</div>
                                 <div class="grid grid-cols-2 gap-2 mt-2">
@@ -346,166 +550,361 @@
                                 </div>
                             </div>
                         `)
-                        .addTo(map);
+                                .addTo(map);
+                        });
+
+                        map.on('mouseenter', 'grid-layer', () => map.getCanvas().style.cursor = 'pointer');
+                        map.on('mouseleave', 'grid-layer', () => map.getCanvas().style.cursor = '');
+
+                        // Auto-select center grid and autoplay
+                        if (geojsonData.features.length > 0) {
+                            const centerFeature = geojsonData.features[Math.floor(geojsonData.features.length / 2)];
+                            const props = centerFeature.properties;
+                            const dts = typeof props.dates === 'string' ? JSON.parse(props.dates) : props.dates;
+                            const req = typeof props.requirement === 'string' ? JSON.parse(props.requirement) : props.requirement;
+                            const def = typeof props.deficit === 'string' ? JSON.parse(props.deficit) : props.deficit;
+
+                            currentSelectedCell = { props, dts, req, def };
+                            updateMetrics(req, def);
+                            updateChart(dts, req, def);
+
+                            // Trigger autoplay
+                            if (map.getLayer('heatmap-layer')) {
+                                map.setPaintProperty('heatmap-layer', 'heatmap-weight', getHeatmapWeightExpression());
+                                map.setPaintProperty('heatmap-layer', 'heatmap-color', getHeatmapColorExpression());
+                            }
+                            document.getElementById('play-btn').click();
+                        }
+
+                    } catch (err) {
+                        console.error("Error loading GeoJSON", err);
+                        document.getElementById('date-display').innerText = "Data missing";
+                    }
                 });
 
-                map.on('mouseenter', 'grid-layer', () => map.getCanvas().style.cursor = 'pointer');
-                map.on('mouseleave', 'grid-layer', () => map.getCanvas().style.cursor = '');
+                window.setLayer = function (layer) {
+                    currentLayer = layer;
+                    const btnDef = document.getElementById('btn-deficit');
+                    const btnReq = document.getElementById('btn-requirement');
 
-            } catch (err) {
-                console.error("Error loading GeoJSON", err);
-                document.getElementById('date-display').innerText = "Data missing";
-            }
-        });
+                    if (layer === 'deficit') {
+                        btnDef.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
+                        btnReq.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
 
-        window.setLayer = function(layer) {
-            currentLayer = layer;
-            const btnDef = document.getElementById('btn-deficit');
-            const btnReq = document.getElementById('btn-requirement');
-            
-            if (layer === 'deficit') {
-                btnDef.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
-                btnReq.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
-                
-                document.getElementById('legend-title').innerText = "Deficit Severity (mm/day)";
-                document.getElementById('legend-gradient').className = "h-2 rounded-full w-full bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-red-900 mb-1";
-                document.getElementById('legend-labels').innerHTML = "<span>0</span><span>0.5</span><span>1.0</span><span>2.0+</span>";
-            } else {
-                btnReq.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
-                btnDef.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
-                
-                document.getElementById('legend-title').innerText = "Water Requirement (mm/day)";
-                document.getElementById('legend-gradient').className = "h-2 rounded-full w-full bg-gradient-to-r from-blue-300 via-blue-500 to-blue-800 mb-1";
-                document.getElementById('legend-labels').innerHTML = "<span>0</span><span>4</span><span>8</span><span>12+</span>";
-            }
+                        document.getElementById('legend-title').innerText = "Deficit Severity (mm/month)";
+                        document.getElementById('legend-gradient').className = "h-2 rounded-full w-full bg-gradient-to-r from-green-500 via-yellow-400 via-red-500 to-red-900 mb-1";
+                        document.getElementById('legend-labels').innerHTML = "<span>0</span><span>50</span><span>100</span><span>200+</span>";
+                    } else {
+                        btnReq.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
+                        btnDef.className = "flex-1 text-xs py-2 px-3 rounded-md font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
 
-            if (map.getLayer('grid-layer')) {
-                map.setPaintProperty('grid-layer', 'fill-color', getFillColorExpression());
-            }
-        }
+                        document.getElementById('legend-title').innerText = "Water Requirement (mm/month)";
+                        document.getElementById('legend-gradient').className = "h-2 rounded-full w-full bg-gradient-to-r from-blue-600 via-gray-100 to-red-600 mb-1";
+                        document.getElementById('legend-labels').innerHTML = "<span>0</span><span>150</span><span>300+</span>";
+                    }
 
-        function getFillColorExpression() {
-            // Read the flattened property based on timeIndex to avoid MapLibre array parsing errors
-            const propName = currentLayer === 'deficit' ? 'def_' + timeIndex : 'req_' + timeIndex;
-            const valExpr = ['get', propName];
-            
-            if (currentLayer === 'deficit') {
-                return [
-                    'interpolate', ['linear'], valExpr,
-                    0, '#22c55e', 0.5, '#facc15', 1.0, '#ef4444', 2.0, '#7f1d1d'
-                ];
-            } else {
-                return [
-                    'interpolate', ['linear'], valExpr,
-                    0, '#93c5fd', 6, '#3b82f6', 12, '#1e40af'
-                ];
-            }
-        }
-
-        // Time slider logic
-        const slider = document.getElementById('time-slider');
-        slider.addEventListener('input', (e) => {
-            timeIndex = parseInt(e.target.value);
-            updateDateDisplay();
-            if (map.getLayer('grid-layer')) {
-                map.setPaintProperty('grid-layer', 'fill-color', getFillColorExpression());
-            }
-            updateChartCursor();
-        });
-
-        function updateDateDisplay() {
-            if (datesArray.length > 0) {
-                const d = new Date(datesArray[timeIndex]);
-                const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-                document.getElementById('date-display').innerText = formatted;
-            }
-        }
-
-        function updateChartCursor() {
-            const cursor = document.getElementById('chart-cursor');
-            if (datesArray.length > 0 && chartInstance.data.datasets.length > 0) {
-                cursor.style.display = 'block';
-                const percentage = (timeIndex / (datesArray.length - 1)) * 100;
-                cursor.style.left = `calc(${percentage}% - 1px)`; 
-            }
-        }
-
-        function updateMetrics(req, def) {
-            document.getElementById('metrics-instruction').classList.add('hidden');
-            document.getElementById('metrics-data').classList.remove('hidden');
-            
-            const avgDef = (def.reduce((a,b)=>a+b,0) / def.length).toFixed(2);
-            const maxDef = Math.max(...def).toFixed(2);
-            const avgReq = (req.reduce((a,b)=>a+b,0) / req.length).toFixed(2);
-            const totDef = def.reduce((a,b)=>a+b,0).toFixed(1);
-            
-            document.getElementById('metric-avg-def').innerText = avgDef;
-            document.getElementById('metric-max-def').innerText = maxDef;
-            document.getElementById('metric-avg-req').innerText = avgReq;
-            document.getElementById('metric-tot-def').innerText = totDef;
-        }
-
-        function updateChart(labels, req, def) {
-            document.getElementById('chart-overlay-msg').style.display = 'none';
-            chartInstance.data.labels = labels;
-            chartInstance.data.datasets = [
-                {
-                    type: 'bar',
-                    label: 'Requirement (Eo)',
-                    data: req,
-                    yAxisID: 'y1',
-                    backgroundColor: 'rgba(59, 130, 246, 0.4)',
-                    hoverBackgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    borderRadius: 4,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.9
-                },
-                {
-                    type: 'line',
-                    label: 'Water Deficit',
-                    data: def,
-                    yAxisID: 'y',
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.25)',
-                    borderWidth: 2.5,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#ef4444',
-                    pointHoverBorderColor: '#ffffff',
-                    pointHoverBorderWidth: 2,
-                    fill: true,
-                    tension: 0
+                    if (map.getLayer('heatmap-layer')) {
+                        map.setPaintProperty('heatmap-layer', 'heatmap-weight', getHeatmapWeightExpression());
+                        map.setPaintProperty('heatmap-layer', 'heatmap-color', getHeatmapColorExpression());
+                    }
                 }
-            ];
-            chartInstance.update();
-            updateChartCursor();
-        }
 
-        // Play button
-        let playInterval;
-        document.getElementById('play-btn').addEventListener('click', (e) => {
-            const btn = e.currentTarget;
-            const icon = btn.querySelector('i');
-            
-            if (playInterval) {
-                clearInterval(playInterval);
-                playInterval = null;
-                icon.className = 'ti ti-player-play-filled';
-                btn.classList.remove('bg-red-600', 'hover:bg-red-500', 'border-red-500');
-                btn.classList.add('bg-palm-700', 'hover:bg-palm-600', 'border-palm-500');
-            } else {
-                icon.className = 'ti ti-player-pause-filled';
-                btn.classList.remove('bg-palm-700', 'hover:bg-palm-600', 'border-palm-500');
-                btn.classList.add('bg-red-600', 'hover:bg-red-500', 'border-red-500');
-                
-                playInterval = setInterval(() => {
-                    timeIndex++;
-                    if (timeIndex >= datesArray.length) timeIndex = 0;
-                    slider.value = timeIndex;
-                    slider.dispatchEvent(new Event('input'));
-                }, 300);
-            }
-        });
-    </script>
+                window.toggleMapLayer = function () {
+                    const content = document.getElementById('map-layer-content');
+                    const icon = document.getElementById('toggle-layer-icon');
+                    if (content.classList.contains('max-h-0')) {
+                        content.classList.remove('max-h-0', 'opacity-0', 'mt-0');
+                        content.classList.add('max-h-[1000px]', 'opacity-100', 'mt-4');
+                        icon.classList.remove('ti-chevron-down');
+                        icon.classList.add('ti-chevron-up');
+                    } else {
+                        content.classList.add('max-h-0', 'opacity-0', 'mt-0');
+                        content.classList.remove('max-h-[1000px]', 'opacity-100', 'mt-4');
+                        icon.classList.remove('ti-chevron-up');
+                        icon.classList.add('ti-chevron-down');
+                    }
+                }
+
+                function getHeatmapWeightExpression() {
+                    const propName = currentLayer === 'deficit' ? 'deficit' : 'requirement';
+                    const valExpr = ['at', timeIndex, ['get', propName]];
+
+                    if (currentLayer === 'deficit') {
+                        return ['interpolate', ['linear'], valExpr, 0, 0, 150, 1];
+                    } else {
+                        return ['interpolate', ['linear'], valExpr, 100, 0, 250, 1]; // Tighter range for Requirement!
+                    }
+                }
+
+                function getHeatmapColorExpression() {
+                    if (currentLayer === 'deficit') {
+                        return [
+                            'interpolate', ['linear'], ['heatmap-density'],
+                            0, 'rgba(34,197,94,0)',    // 0 = Transparent Green
+                            0.1, '#22c55e',            // Low = Green
+                            0.4, '#facc15',            // Mid = Yellow
+                            0.7, '#ef4444',            // High = Red
+                            1, '#7f1d1d'               // Max = Dark Red
+                        ];
+                    } else {
+                        return [
+                            'interpolate', ['linear'], ['heatmap-density'],
+                            0, 'rgba(37,99,235,0)',     // 0 = Transparent Blue
+                            0.1, '#2563eb',             // Low = Blue
+                            0.5, '#f3f4f6',             // Mid = White
+                            0.8, '#ef4444',             // High = Red
+                            1, '#dc2626'                // Max = Dark Red
+                        ];
+                    }
+                }
+
+                // Time slider logic
+                const slider = document.getElementById('time-slider');
+                slider.addEventListener('input', (e) => {
+                    timeIndex = parseInt(e.target.value);
+                    updateDateDisplay();
+                    if (map.getLayer('heatmap-layer')) {
+                        map.setPaintProperty('heatmap-layer', 'heatmap-weight', getHeatmapWeightExpression());
+                    }
+                    updateChartCursor();
+                });
+
+                function updateDateDisplay() {
+                    if (datesArray.length > 0) {
+                        const dateStr = datesArray[timeIndex];
+                        const ts = document.getElementById('map-timestamp');
+                        if (ts) ts.textContent = dateStr;
+                        const d = new Date(dateStr);
+                        const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                        document.getElementById('date-display').innerText = formatted;
+                    }
+                }
+
+                function updateChartCursor() {
+                    if (!chartInstance || datesArray.length === 0) return;
+                    chartInstance.options.plugins.annotation.annotations.cursorLine = {
+                        type: 'line',
+                        xMin: timeIndex,
+                        xMax: timeIndex,
+                        borderColor: 'rgba(99, 153, 34, 0.8)', // palm-500
+                        borderWidth: 2.5,
+                        drawTime: 'afterDatasetsDraw'
+                    };
+                    chartInstance.update('none'); // Update without animation
+                }
+
+                function updateMetrics(req, def) {
+                    document.getElementById('metrics-instruction').classList.add('hidden');
+                    document.getElementById('metrics-data').classList.remove('hidden');
+
+                    // Auto-open suggestion modal
+                    openActionPlan();
+
+                    let startIndex = 0;
+                    if (currentMode === 'forecast' && datesArray && datesArray.length > 0) {
+                        // Find index for Jan 2026 (6 months before forecast) or just use the last 12 months
+                        const jan2026Idx = datesArray.findIndex(d => d === '2026-01');
+                        if (jan2026Idx !== -1) {
+                            startIndex = jan2026Idx;
+                        } else {
+                            startIndex = Math.max(0, datesArray.length - 12); // Fallback to last 12 months
+                        }
+                    }
+
+                    const activeReq = req.slice(startIndex);
+                    const activeDef = def.slice(startIndex);
+
+                    const avgDef = activeDef.length ? (activeDef.reduce((a, b) => a + b, 0) / activeDef.length).toFixed(1) : 0;
+                    const maxDef = activeDef.length ? Math.max(...activeDef).toFixed(1) : 0;
+                    const avgReq = activeReq.length ? (activeReq.reduce((a, b) => a + b, 0) / activeReq.length).toFixed(1) : 0;
+                    const totDef = activeDef.length ? activeDef.reduce((a, b) => a + b, 0).toFixed(0) : 0;
+
+                    document.getElementById('metric-avg-def').innerText = avgDef;
+                    document.getElementById('metric-max-def').innerText = maxDef;
+                    document.getElementById('metric-avg-req').innerText = avgReq;
+                    document.getElementById('metric-tot-def').innerText = totDef;
+                }
+
+                window.openActionPlan = function () {
+                    if (!currentSelectedCell) return;
+
+                    const jan2026Idx = datesArray.findIndex(d => d === '2026-07');
+                    const fIdx = jan2026Idx !== -1 ? jan2026Idx : Math.max(0, datesArray.length - 6);
+
+                    const forecastDef = currentSelectedCell.def.slice(fIdx);
+                    const maxForecastDef = Math.max(...forecastDef);
+
+                    let suggestion = "";
+                    let borderColor = "";
+                    let iconColor = "";
+
+                    if (maxForecastDef > 150) {
+                        suggestion = `<strong>Deficit Alert!</strong> The model projects a peak deficit of ${maxForecastDef.toFixed(0)} mm/month in the coming season.`;
+                        borderColor = "border-t-red-500";
+                        iconColor = "text-red-500";
+                    } else if (maxForecastDef > 80) {
+                        suggestion = `<strong>Moderate Stress Expected.</strong> A peak deficit of ${maxForecastDef.toFixed(0)} mm/month is forecasted.`;
+                        borderColor = "border-t-yellow-500";
+                        iconColor = "text-yellow-500";
+                    } else {
+                        suggestion = `<strong>Favorable Conditions.</strong> The maximum forecasted deficit is only ${maxForecastDef.toFixed(0)} mm/month, indicating sufficient water.`;
+                        borderColor = "border-t-green-500";
+                        iconColor = "text-green-500";
+                    }
+
+                    document.getElementById('action-plan-text').innerHTML = suggestion;
+
+                    const modal = document.getElementById('action-plan-modal');
+                    modal.classList.remove('border-t-red-500', 'border-t-yellow-500', 'border-t-green-500', 'border-t-palm-500', 'border-palm-500');
+                    modal.classList.add(borderColor);
+
+                    const icon = document.getElementById('action-plan-icon');
+                    icon.className = `ti ti-list-details ${iconColor} text-lg`;
+
+                    // Show
+                    modal.classList.remove('scale-95', 'opacity-0', 'pointer-events-none');
+                    modal.classList.add('scale-100');
+                }
+
+                window.closeActionPlan = function () {
+                    const modal = document.getElementById('action-plan-modal');
+                    modal.classList.add('scale-95', 'opacity-0', 'pointer-events-none');
+                    modal.classList.remove('scale-100');
+                }
+
+                window.seeForecastAction = function () {
+                    setMode('forecast');
+                    closeActionPlan();
+                }
+
+                window.setMode = function (mode) {
+                    currentMode = mode;
+
+                    // Update Metric Tabs UI
+                    const btnMetricForecast = document.getElementById('metric-tab-forecast');
+                    const btnMetricHistory = document.getElementById('metric-tab-history');
+
+                    if (mode === 'forecast') {
+                        btnMetricForecast.className = "px-2 py-1 rounded bg-white text-palm-700 shadow-sm";
+                        btnMetricHistory.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-800";
+                    } else {
+                        btnMetricHistory.className = "px-2 py-1 rounded bg-white text-palm-700 shadow-sm";
+                        btnMetricForecast.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-800";
+                    }
+
+                    // Update Chart Tabs UI
+                    const btnChartForecast = document.getElementById('tab-forecast');
+                    const btnChartHistorical = document.getElementById('tab-historical');
+
+                    if (mode === 'forecast') {
+                        btnChartForecast.className = "text-xs py-1 px-3 rounded font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
+                        btnChartHistorical.className = "text-xs py-1 px-3 rounded font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
+                    } else {
+                        btnChartHistorical.className = "text-xs py-1 px-3 rounded font-bold transition-all bg-white text-palm-700 shadow-sm border border-gray-200";
+                        btnChartForecast.className = "text-xs py-1 px-3 rounded font-bold transition-all text-gray-500 hover:text-gray-900 bg-transparent";
+                    }
+
+                    // Re-apply metrics and chart zoom if a cell is selected
+                    if (currentSelectedCell) {
+                        updateMetrics(currentSelectedCell.req, currentSelectedCell.def);
+                        applyChartZoom();
+                    }
+                }
+
+                function applyChartZoom() {
+                    const slider = document.getElementById('time-slider');
+                    if (!chartInstance || !datesArray || datesArray.length === 0) return;
+
+                    if (currentMode === 'forecast') {
+                        // Show from Jan 2026 to end
+                        const jan2026Idx = datesArray.findIndex(d => d === '2026-01');
+                        const minIdx = jan2026Idx !== -1 ? jan2026Idx : Math.max(0, datesArray.length - 12);
+                        chartInstance.options.scales.x.min = datesArray[minIdx];
+                        chartInstance.options.scales.x.max = datesArray[datesArray.length - 1];
+
+                        slider.min = minIdx;
+                        if (timeIndex < minIdx) {
+                            timeIndex = minIdx;
+                            slider.value = timeIndex;
+                            slider.dispatchEvent(new Event('input'));
+                        }
+                    } else {
+                        // Show all
+                        chartInstance.options.scales.x.min = datesArray[0];
+                        chartInstance.options.scales.x.max = datesArray[datesArray.length - 1];
+
+                        slider.min = 0;
+                    }
+                    chartInstance.update();
+                }
+
+                function updateChart(labels, req, def) {
+                    document.getElementById('chart-overlay-msg').style.display = 'none';
+                    chartInstance.data.labels = labels;
+                    chartInstance.data.datasets = [
+                        {
+                            type: 'bar',
+                            label: 'Requirement (Eo)',
+                            data: req,
+                            yAxisID: 'y1',
+                            backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                            hoverBackgroundColor: 'rgba(59, 130, 246, 0.8)',
+                            borderRadius: 4,
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.9
+                        },
+                        {
+                            type: 'line',
+                            label: 'Water Deficit',
+                            data: def,
+                            yAxisID: 'y',
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                            borderWidth: 2.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#ef4444',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
+                            fill: true,
+                            tension: 0
+                        }
+                    ];
+                    chartInstance.update();
+                    applyChartZoom();
+                    updateChartCursor();
+                }
+
+                // Play button
+                let playInterval;
+                document.getElementById('play-btn').addEventListener('click', (e) => {
+                    const btn = e.currentTarget;
+                    const icon = btn.querySelector('i');
+
+                    if (playInterval) {
+                        clearInterval(playInterval);
+                        playInterval = null;
+                        icon.className = 'ti ti-player-play-filled';
+                        btn.classList.remove('bg-red-600', 'hover:bg-red-500', 'border-red-500');
+                        btn.classList.add('bg-palm-700', 'hover:bg-palm-600', 'border-palm-500');
+                    } else {
+                        icon.className = 'ti ti-player-pause-filled';
+                        btn.classList.remove('bg-palm-700', 'hover:bg-palm-600', 'border-palm-500');
+                        btn.classList.add('bg-red-600', 'hover:bg-red-500', 'border-red-500');
+
+                        playInterval = setInterval(() => {
+                            const minIdx = parseInt(slider.min) || 0;
+                            const maxIdx = parseInt(slider.max) || datesArray.length - 1;
+
+                            timeIndex++;
+                            if (timeIndex > maxIdx) timeIndex = minIdx;
+
+                            slider.value = timeIndex;
+                            slider.dispatchEvent(new Event('input'));
+                        }, 800);
+                    }
+                });
+            </script>
 </body>
+
 </html>
