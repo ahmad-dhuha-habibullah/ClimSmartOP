@@ -372,6 +372,7 @@
                             y: {
                                 display: true,
                                 position: 'left',
+                                reverse: true,
                                 title: { display: true, text: 'Deficit (mm/month)', color: '#ef4444', font: { family: "'Plus Jakarta Sans', sans-serif", size: 10, weight: 'bold' } },
                                 grid: { color: 'rgba(0,0,0,0.05)', tickLength: 0 },
                                 border: { display: false, dash: [4, 4] },
@@ -531,8 +532,12 @@
                         map.on('click', 'grid-layer', (e) => {
                             const props = e.features[0].properties;
                             const dts = typeof props.dates === 'string' ? JSON.parse(props.dates) : props.dates;
-                            const req = typeof props.requirement === 'string' ? JSON.parse(props.requirement) : props.requirement;
-                            const def = typeof props.deficit === 'string' ? JSON.parse(props.deficit) : props.deficit;
+                            const req = [];
+                            const def = [];
+                            for(let i=0; i<dts.length; i++) {
+                                req.push(props['req_' + i] || 0);
+                                def.push(props['def_' + i] || 0);
+                            }
 
                             currentSelectedCell = { props, dts, req, def };
 
@@ -561,8 +566,12 @@
                             const centerFeature = geojsonData.features[Math.floor(geojsonData.features.length / 2)];
                             const props = centerFeature.properties;
                             const dts = typeof props.dates === 'string' ? JSON.parse(props.dates) : props.dates;
-                            const req = typeof props.requirement === 'string' ? JSON.parse(props.requirement) : props.requirement;
-                            const def = typeof props.deficit === 'string' ? JSON.parse(props.deficit) : props.deficit;
+                            const req = [];
+                            const def = [];
+                            for(let i=0; i<dts.length; i++) {
+                                req.push(props['req_' + i] || 0);
+                                def.push(props['def_' + i] || 0);
+                            }
 
                             currentSelectedCell = { props, dts, req, def };
                             updateMetrics(req, def);
@@ -626,8 +635,8 @@
                 }
 
                 function getHeatmapWeightExpression() {
-                    const propName = currentLayer === 'deficit' ? 'deficit' : 'requirement';
-                    const valExpr = ['at', timeIndex, ['get', propName]];
+                    const prefix = currentLayer === 'deficit' ? 'def_' : 'req_';
+                    const valExpr = ['get', ['concat', prefix, ['to-string', timeIndex]]];
 
                     if (currentLayer === 'deficit') {
                         return ['interpolate', ['linear'], valExpr, 0, 0, 150, 1];

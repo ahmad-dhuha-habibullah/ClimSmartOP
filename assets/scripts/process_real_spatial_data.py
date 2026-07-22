@@ -145,20 +145,24 @@ def main():
                 [lon - GRID_STEP/2, lat - GRID_STEP/2]
             ]
             
+            props = {
+                "id": pid,
+                "lat": round(lat, 5),
+                "lon": round(lon, 5),
+                "dates": json.dumps(full_dates)
+            }
+            for i, val in enumerate(full_deficit):
+                props[f"def_{i}"] = val
+            for i, val in enumerate(full_req):
+                props[f"req_{i}"] = val
+
             features.append({
                 "type": "Feature",
                 "geometry": {
                     "type": "Polygon",
                     "coordinates": [poly_geom]
                 },
-                "properties": {
-                    "id": pid,
-                    "lat": round(lat, 5),
-                    "lon": round(lon, 5),
-                    "dates": full_dates,
-                    "deficit": full_deficit,
-                    "requirement": full_req
-                }
+                "properties": props
             })
             pid += 1
 
