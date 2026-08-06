@@ -1882,8 +1882,9 @@
       ctxStr += `\n\n[CHARTING CAPABILITY]\nIf the user asks for a chart (e.g. rain forecast, yield forecast), creatively generate a SQL query and wrap it in a <chart> XML tag. Format exactly like this:
 <chart type="bar" db="daily" title="Yield Forecast">SELECT "Clock.Today", "Calculations.Script.AnnualYield" FROM DailyOutput LIMIT 10</chart>
 Valid 'db' values: "daily" or "seasonal". 
-For seasonal ensemble DB, querying 'EnsembleOutput' is recommended. Focus on yield.
+For seasonal ensemble DB, querying 'EnsembleOutput' is recommended.
 <chart type="line" db="seasonal" title="Ensemble Yield Forecast" spaghetti="true">SELECT Date, MeanYield, P10Yield, P90Yield, Trace1Yield, Trace2Yield, Trace3Yield, Trace4Yield, Trace5Yield, Trace6Yield, Trace7Yield, Trace8Yield, Trace9Yield, Trace10Yield, Trace11Yield, Trace12Yield, Trace13Yield, Trace14Yield, Trace15Yield FROM EnsembleOutput</chart>
+To plot ensemble Rain instead, simply replace 'Yield' with 'Rain' in the SELECT statement.
 Valid 'type' values: "bar" or "line". SQL must return a string label as the first column, and numerical values as the subsequent columns. If you provide 'spaghetti="true"', the frontend will render all columns containing 'Trace' as individual thin lines, 'P10'/'P90' as an area, and 'Mean' as a bold line.
 
 [ACTION CAPABILITY]\nIf the user asks to inspect a specific block (e.g., "inspect block 5"), output <action>inspectBlock(5)</action>.`;
