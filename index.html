@@ -1882,9 +1882,9 @@
       ctxStr += `\n\n[CHARTING CAPABILITY]\nIf the user asks for a chart (e.g. rain forecast, yield forecast), creatively generate a SQL query and wrap it in a <chart> XML tag. Format exactly like this:
 <chart type="bar" db="daily" title="Yield Forecast">SELECT "Clock.Today", "Calculations.Script.AnnualYield" FROM DailyOutput LIMIT 10</chart>
 Valid 'db' values: "daily" or "seasonal". 
-For seasonal ensemble DB, querying 'EnsembleOutput' is recommended (Columns: Date, MeanYield, P10Yield, P90Yield, MeanRain, P10Rain, P90Rain, Trace1Yield, etc).
-<chart type="line" db="seasonal" title="Ensemble Yield Forecast" spaghetti="true">SELECT Date, MeanYield, P10Yield, P90Yield FROM EnsembleOutput</chart>
-Valid 'type' values: "bar" or "line". SQL must return a string label as the first column, and numerical values as the subsequent columns. If you provide 'spaghetti="true"', the frontend will expect P10, Mean, and P90 and render them as a distribution plot.
+For seasonal ensemble DB, querying 'EnsembleOutput' is recommended. Focus on yield.
+<chart type="line" db="seasonal" title="Ensemble Yield Forecast" spaghetti="true">SELECT Date, MeanYield, P10Yield, P90Yield, Trace1Yield, Trace2Yield, Trace3Yield, Trace4Yield, Trace5Yield, Trace6Yield, Trace7Yield, Trace8Yield, Trace9Yield, Trace10Yield, Trace11Yield, Trace12Yield, Trace13Yield, Trace14Yield, Trace15Yield FROM EnsembleOutput</chart>
+Valid 'type' values: "bar" or "line". SQL must return a string label as the first column, and numerical values as the subsequent columns. If you provide 'spaghetti="true"', the frontend will render all columns containing 'Trace' as individual thin lines, 'P10'/'P90' as an area, and 'Mean' as a bold line.
 
 [ACTION CAPABILITY]\nIf the user asks to inspect a specific block (e.g., "inspect block 5"), output <action>inspectBlock(5)</action>.`;
       return ctxStr;
@@ -1932,14 +1932,41 @@ Valid 'type' values: "bar" or "line". SQL must return a string label as the firs
             // Create datasets for each subsequent column
             const colorPalette = ['#3B6D11', 'rgba(5, 150, 105, 0.5)', 'rgba(5, 150, 105, 0.2)', '#1d4ed8', '#f59e0b'];
             
-            if (chart.isSpaghetti && colNames.length >= 4) {
-               // Assuming: label, Mean, P10, P90
-               let dataMean=[], dataP10=[], dataP90=[];
-               res[0].values.forEach(row => { dataMean.push(row[1]); dataP10.push(row[2]); dataP90.push(row[3]); });
+            if (chart.isSpaghetti) {
+               const isYieldPlot = chart.title.toLowerCase().includes('yield');
+               const scale = isYieldPlot ? 6 : 1;
                
-               datasets.push({ label: colNames[3], data: dataP90, borderColor: 'transparent', backgroundColor: 'rgba(5, 150, 105, 0.2)', fill: '+1', pointRadius: 0, tension: 0.4 });
-               datasets.push({ label: colNames[2], data: dataP10, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
-               datasets.push({ label: colNames[1], data: dataMean, borderColor: '#3B6D11', borderWidth: 2, backgroundColor: 'transparent', fill: false, pointRadius: 1, tension: 0.4 });
+               let parsedDatasets = [];
+               for (let i = 1; i < colNames.length; i++) {
+                 const colName = colNames[i];
+                 const dataVals = [];
+                 res[0].values.forEach(row => { dataVals.push(row[i] * scale); });
+                 
+                 if (colName.includes('P10')) {
+                   parsedDatasets.push({ label: colName, data: dataVals, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+                 } else if (colName.includes('P90')) {
+                   parsedDatasets.push({ label: colName, data: dataVals, borderColor: 'transparent', backgroundColor: 'rgba(5, 150, 105, 0.2)', fill: '-1', pointRadius: 0, tension: 0.4 });
+                 } else if (colName.includes('Mean')) {
+                   parsedDatasets.push({ label: colName, data: dataVals, borderColor: '#3B6D11', borderWidth: 3, backgroundColor: 'transparent', fill: false, pointRadius: 1, tension: 0.4, order: 0 });
+                 } else if (colName.includes('Trace')) {
+                   parsedDatasets.push({ label: colName, data: dataVals, borderColor: 'rgba(156, 163, 175, 0.4)', borderWidth: 1, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4, order: 10 });
+                 } else {
+                   parsedDatasets.push({ label: colName, data: dataVals, borderColor: 'rgba(59, 130, 246, 0.5)', borderWidth: 1, fill: false, pointRadius: 0 });
+                 }
+               }
+               
+               // Organize datasets so P10 is immediately followed by P90 for fill '-1'
+               const p10Data = parsedDatasets.find(d => d.label.includes('P10'));
+               const p90Data = parsedDatasets.find(d => d.label.includes('P90'));
+               const meanData = parsedDatasets.find(d => d.label.includes('Mean'));
+               const traceData = parsedDatasets.filter(d => d.label.includes('Trace'));
+               const otherData = parsedDatasets.filter(d => !d.label.includes('P10') && !d.label.includes('P90') && !d.label.includes('Mean') && !d.label.includes('Trace'));
+               
+               if (p10Data) datasets.push(p10Data);
+               if (p90Data) datasets.push(p90Data);
+               traceData.forEach(d => datasets.push(d));
+               if (meanData) datasets.push(meanData);
+               otherData.forEach(d => datasets.push(d));
             } else {
                for (let i = 1; i < colNames.length; i++) {
                  const dataVals = [];
