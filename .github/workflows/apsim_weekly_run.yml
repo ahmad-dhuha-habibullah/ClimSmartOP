@@ -35,6 +35,10 @@ jobs:
       - name: Run Seasonal Simulation Config
         run: docker run --rm -v "${{ github.workspace }}:/workspace" apsiminitiative/apsimng /workspace/assets/south_sumatra_oilpalm_seasonal_forecast.apsimx
 
+      # Generate fake ensemble forecast data
+      - name: Generate Fake Ensemble Data
+        run: python assets/scripts/generate_ensemble.py
+
       # Commit files back to GitHub
       - name: Commit and Push Updated Files
         run: |
@@ -44,4 +48,4 @@ jobs:
           git add assets/*.db
           git add assets/*.met
           
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update Seasonal Weather and APSIM [skip ci]" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update Seasonal Weather, APSIM, and Ensemble [skip ci]" && git push)
