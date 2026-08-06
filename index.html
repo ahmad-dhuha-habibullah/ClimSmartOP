@@ -461,11 +461,11 @@
         <div id="sub-apsim-annual" class="apsim-sub-panel">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="card">
-              <h3 class="section-title">Yield vs Rainfall Trend</h3>
+              <h3 class="section-title" id="yield-chart-title">Yield vs Rainfall Trend</h3>
               <div class="relative h-[250px] w-full"><canvas id="yieldChart"></canvas></div>
             </div>
             <div class="card">
-              <h3 class="section-title">Canopy LAI Trend</h3>
+              <h3 class="section-title" id="lai-chart-title">Canopy LAI Trend</h3>
               <div class="relative h-[250px] w-full"><canvas id="laiChart"></canvas></div>
             </div>
           </div>
@@ -1121,16 +1121,68 @@
             </tr>
           `).reverse().join('');
 
+          document.getElementById('yield-chart-title').textContent = 'Yield vs Rainfall Trend';
+          document.getElementById('lai-chart-title').textContent = 'Canopy LAI Trend';
           renderCharts(data);
         } else {
-          document.getElementById('stat-years').textContent = 'N/A';
-          document.getElementById('stat-yield').textContent = 'N/A';
-          document.getElementById('stat-lai').textContent = 'N/A';
-          document.getElementById('stat-rain').textContent = 'N/A';
-          document.getElementById('db-table-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No Annual Data Available in this Database</td></tr>';
+          // Check if this is the Ensemble Database
+          let ensData = null;
+          try {
+            const ensRes = db.exec('SELECT * FROM EnsembleOutput');
+            if (ensRes.length > 0) ensData = ensRes[0];
+          } catch(e) {}
+          
+          if (ensData) {
+            const columns = ensData.columns;
+            const values = ensData.values;
+            
+            let dates = [], meanYield = [], p10Yield = [], p90Yield = [];
+            let meanRain = [], p10Rain = [], p90Rain = [];
+            
+            const dateIdx = columns.indexOf('Date');
+            const myIdx = columns.indexOf('MeanYield');
+            const p10yIdx = columns.indexOf('P10Yield');
+            const p90yIdx = columns.indexOf('P90Yield');
+            const mrIdx = columns.indexOf('MeanRain');
+            const p10rIdx = columns.indexOf('P10Rain');
+            const p90rIdx = columns.indexOf('P90Rain');
+            
+            const traceYIdxs = columns.map((c, i) => c.startsWith('Trace') && c.endsWith('Yield') ? i : -1).filter(i => i !== -1);
+            const traceRIdxs = columns.map((c, i) => c.startsWith('Trace') && c.endsWith('Rain') ? i : -1).filter(i => i !== -1);
+            
+            values.forEach(row => {
+              dates.push(row[dateIdx]);
+              if (myIdx !== -1) meanYield.push(row[myIdx] * 6);
+              if (p10yIdx !== -1) p10Yield.push(row[p10yIdx] * 6);
+              if (p90yIdx !== -1) p90Yield.push(row[p90yIdx] * 6);
+              if (mrIdx !== -1) meanRain.push(row[mrIdx]);
+              if (p10rIdx !== -1) p10Rain.push(row[p10rIdx]);
+              if (p90rIdx !== -1) p90Rain.push(row[p90rIdx]);
+            });
+            
+            const yearsText = dates.length > 1 ? `${dates[0].split('-')[0]} - ${dates[dates.length-1].split('-')[0]}` : 'N/A';
+            const avgYield = meanYield.length > 0 ? (meanYield.reduce((a, b) => a + b, 0) / meanYield.length).toFixed(1) : 'N/A';
+            const avgRain = meanRain.length > 0 ? Math.round(meanRain.reduce((a, b) => a + b, 0) / meanRain.length) : 'N/A';
+            
+            document.getElementById('stat-years').textContent = yearsText;
+            document.getElementById('stat-yield').textContent = avgYield;
+            document.getElementById('stat-lai').textContent = 'N/A';
+            document.getElementById('stat-rain').textContent = avgRain;
+            
+            document.getElementById('db-table-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Raw table view hidden for probabilistic ensemble data.</td></tr>';
+            
+            apsimContextData = { years: yearsText, avgYield, avgLAI: 'N/A', avgRain };
+            
+            renderEnsembleMainDashboard(dates, meanYield, p10Yield, p90Yield, traceYIdxs, values, meanRain, p10Rain, p90Rain, traceRIdxs);
+          } else {
+            document.getElementById('stat-years').textContent = 'N/A';
+            document.getElementById('stat-yield').textContent = 'N/A';
+            document.getElementById('stat-lai').textContent = 'N/A';
+            document.getElementById('stat-rain').textContent = 'N/A';
+            document.getElementById('db-table-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No Annual Data Available in this Database</td></tr>';
+            apsimContextData = { years: 'N/A', avgYield: 0, avgLAI: 0, avgRain: 0 };
+          }
         }
-
-        apsimContextData = { years: years.length > 1 ? `${years[0]}-${years[years.length - 1]}` : 'N/A', avgYield, avgLAI, avgRain };
 
         // Analyze daily/monthly data to extract 'Today' marker and compute DSS input averages
         const isMonthly = await analyzeDailyOrMonthlyData(db, displayName);
@@ -1411,6 +1463,49 @@
         type: 'line',
         data: { labels, datasets: [{ label: 'Peak LAI', data: lais, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.2)', borderWidth: 2, fill: true, tension: 0.4 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, title: { display: true, text: 'LAI (m²/m²)' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+      });
+      });
+    }
+
+    function renderEnsembleMainDashboard(dates, meanYield, p10Yield, p90Yield, traceYIdxs, values, meanRain, p10Rain, p90Rain, traceRIdxs) {
+      document.getElementById('yield-chart-title').textContent = 'Ensemble Yield Forecast (t/ha)';
+      const ctxY = document.getElementById('yieldChart').getContext('2d');
+      if (yieldChartInstance) yieldChartInstance.destroy();
+      
+      let yieldDatasets = [];
+      yieldDatasets.push({ label: 'P10', data: p10Yield, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      yieldDatasets.push({ label: 'P90', data: p90Yield, borderColor: 'transparent', backgroundColor: 'rgba(5, 150, 105, 0.2)', fill: '-1', pointRadius: 0, tension: 0.4 });
+      
+      traceYIdxs.forEach((idx, i) => {
+        let tData = values.map(row => row[idx] * 6);
+        yieldDatasets.push({ label: `Trace${i+1}`, data: tData, borderColor: 'rgba(156, 163, 175, 0.4)', borderWidth: 1, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      });
+      yieldDatasets.push({ label: 'Mean', data: meanYield, borderColor: '#3B6D11', borderWidth: 3, backgroundColor: 'transparent', fill: false, pointRadius: 1, tension: 0.4, order: 0 });
+
+      yieldChartInstance = new Chart(ctxY, {
+        type: 'line',
+        data: { labels: dates, datasets: yieldDatasets },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+      });
+      
+      document.getElementById('lai-chart-title').textContent = 'Ensemble Rain Forecast (mm)';
+      const ctxR = document.getElementById('laiChart').getContext('2d');
+      if (laiChartInstance) laiChartInstance.destroy();
+      
+      let rainDatasets = [];
+      rainDatasets.push({ label: 'P10', data: p10Rain, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      rainDatasets.push({ label: 'P90', data: p90Rain, borderColor: 'transparent', backgroundColor: 'rgba(59, 130, 246, 0.2)', fill: '-1', pointRadius: 0, tension: 0.4 });
+      
+      traceRIdxs.forEach((idx, i) => {
+        let tData = values.map(row => row[idx]);
+        rainDatasets.push({ label: `Trace${i+1}`, data: tData, borderColor: 'rgba(156, 163, 175, 0.3)', borderWidth: 1, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      });
+      rainDatasets.push({ label: 'Mean', data: meanRain, borderColor: '#3b82f6', borderWidth: 3, backgroundColor: 'transparent', fill: false, pointRadius: 1, tension: 0.4, order: 0 });
+
+      laiChartInstance = new Chart(ctxR, {
+        type: 'line',
+        data: { labels: dates, datasets: rainDatasets },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
       });
     }
 
