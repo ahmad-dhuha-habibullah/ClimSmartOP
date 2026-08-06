@@ -1065,38 +1065,54 @@
 
     async function analyzeAPSIMDatabase(db, displayName) {
       try {
-        const query = `SELECT "Clock.Today.Year" as Year, "OilPalm.Age" as Age, "OilPalm.LAI" as LAI, "AnnualRain" as Rain, "Calculations.Script.AnnualYield" as Yield, "AnnualET" as ET FROM AnnualOutput ORDER BY "Clock.Today.Year" ASC`;
-        const res = db.exec(query);
-        if (res.length === 0) throw new Error("AnnualOutput table is empty.");
+        let data = [];
+        try {
+          const query = `SELECT "Clock.Today.Year" as Year, "OilPalm.Age" as Age, "OilPalm.LAI" as LAI, "AnnualRain" as Rain, "Calculations.Script.AnnualYield" as Yield, "AnnualET" as ET FROM AnnualOutput ORDER BY "Clock.Today.Year" ASC`;
+          const res = db.exec(query);
+          if (res.length > 0) {
+            const columns = res[0].columns; const values = res[0].values;
+            data = values.map(row => { let obj = {}; columns.forEach((col, idx) => obj[col] = row[idx]); return obj; });
+          }
+        } catch (e) {
+          console.warn("AnnualOutput table not found or empty.", e);
+        }
 
-        const columns = res[0].columns; const values = res[0].values;
-        const data = values.map(row => { let obj = {}; columns.forEach((col, idx) => obj[col] = row[idx]); return obj; });
+        let years = ['N/A'], avgYield = 0, avgLAI = 0, avgRain = 0;
 
-        const years = data.map(d => d.Year);
-        const validYields = data.map(d => d.Yield).filter(y => y !== null && y > 0);
-        // Multiply by 6 to represent true FFB yield vs dry matter output
-        const avgYield = validYields.length > 0 ? ((validYields.reduce((a, b) => a + b, 0) / validYields.length) * 6).toFixed(1) : 0;
-        document.getElementById('stat-yield').textContent = avgYield;
-        const validLAI = data.map(d => d.LAI).filter(l => l !== null);
-        const avgLAI = validLAI.length > 0 ? (validLAI.reduce((a, b) => a + b, 0) / validLAI.length).toFixed(2) : 0;
-        const validRain = data.map(d => d.Rain).filter(r => r !== null);
-        const avgRain = validRain.length > 0 ? Math.round(validRain.reduce((a, b) => a + b, 0) / validRain.length) : 0;
+        if (data.length > 0) {
+          years = data.map(d => d.Year);
+          const validYields = data.map(d => d.Yield).filter(y => y !== null && y > 0);
+          // Multiply by 6 to represent true FFB yield vs dry matter output
+          avgYield = validYields.length > 0 ? ((validYields.reduce((a, b) => a + b, 0) / validYields.length) * 6).toFixed(1) : 0;
+          
+          const validLAI = data.map(d => d.LAI).filter(l => l !== null);
+          avgLAI = validLAI.length > 0 ? (validLAI.reduce((a, b) => a + b, 0) / validLAI.length).toFixed(2) : 0;
+          
+          const validRain = data.map(d => d.Rain).filter(r => r !== null);
+          avgRain = validRain.length > 0 ? Math.round(validRain.reduce((a, b) => a + b, 0) / validRain.length) : 0;
 
-        document.getElementById('stat-years').textContent = `${years[0]} - ${years[years.length - 1]}`;
-        document.getElementById('stat-yield').textContent = avgYield;
-        document.getElementById('stat-lai').textContent = avgLAI;
-        document.getElementById('stat-rain').textContent = avgRain;
+          document.getElementById('stat-years').textContent = `${years[0]} - ${years[years.length - 1]}`;
+          document.getElementById('stat-yield').textContent = avgYield;
+          document.getElementById('stat-lai').textContent = avgLAI;
+          document.getElementById('stat-rain').textContent = avgRain;
 
-        document.getElementById('db-table-body').innerHTML = data.map(d => `
-      <tr class="hover:bg-gray-50 transition-colors">
-        <td class="px-4 py-2 font-medium text-gray-900">${d.Year}</td><td class="px-4 py-2">${(d.Age || 0).toFixed(1)}</td><td class="px-4 py-2">${Math.round(d.Rain || 0)}</td>
-        <td class="px-4 py-2 font-mono">${(d.LAI || 0).toFixed(2)}</td><td class="px-4 py-2 font-mono font-semibold text-palm-700">${(d.Yield || 0).toFixed(1)}</td><td class="px-4 py-2">${Math.round(d.ET || 0)}</td>
-      </tr>
-    `).reverse().join('');
+          document.getElementById('db-table-body').innerHTML = data.map(d => `
+            <tr class="hover:bg-gray-50 transition-colors">
+              <td class="px-4 py-2 font-medium text-gray-900">${d.Year}</td><td class="px-4 py-2">${(d.Age || 0).toFixed(1)}</td><td class="px-4 py-2">${Math.round(d.Rain || 0)}</td>
+              <td class="px-4 py-2 font-mono">${(d.LAI || 0).toFixed(2)}</td><td class="px-4 py-2 font-mono font-semibold text-palm-700">${(d.Yield || 0).toFixed(1)}</td><td class="px-4 py-2">${Math.round(d.ET || 0)}</td>
+            </tr>
+          `).reverse().join('');
 
-        renderCharts(data);
+          renderCharts(data);
+        } else {
+          document.getElementById('stat-years').textContent = 'N/A';
+          document.getElementById('stat-yield').textContent = 'N/A';
+          document.getElementById('stat-lai').textContent = 'N/A';
+          document.getElementById('stat-rain').textContent = 'N/A';
+          document.getElementById('db-table-body').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No Annual Data Available in this Database</td></tr>';
+        }
 
-        apsimContextData = { years: `${years[0]}-${years[years.length - 1]}`, avgYield, avgLAI, avgRain };
+        apsimContextData = { years: years.length > 1 ? `${years[0]}-${years[years.length - 1]}` : 'N/A', avgYield, avgLAI, avgRain };
 
         // Analyze daily/monthly data to extract 'Today' marker and compute DSS input averages
         const isMonthly = await analyzeDailyOrMonthlyData(db, displayName);
