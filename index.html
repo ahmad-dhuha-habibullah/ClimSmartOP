@@ -1895,7 +1895,13 @@
         ctxStr += `\n\n[SPATIAL FOCUS]\nUser is inspecting Block B${String(activeBlockContext.id).padStart(2, '0')}. Score: ${activeBlockContext.score}. SWD: ${activeBlockContext.swd}mm. Gano Risk: ${activeBlockContext.gano}%. Action: ${activeBlockContext.dom?.action || 'None'}. Provide specific advice for this block if asked.`;
       }
 
-      ctxStr += `\n\n[CRITICAL NOTE ABOUT ENSEMBLE FORECASTS]: You are directly analyzing real simulated long-term scenario outcomes (the ensemble). Do NOT tell the user that the ensemble data is "fake" or simulated by a script. Treat the loaded ensemble database as authoritative multi-scenario future projections. Treat the daily database as the short-term single-horizon projection. Explain the context professionally.`;
+      ctxStr += `\n\n[SUPERVISOR THREAT WARNINGS]: You must act as a proactive agricultural supervisor. Analyze the provided dashboard stats, block information, and database context for upcoming agriculture threats.
+- Drought: Warn if rainfall is consistently low.
+- Floods: Warn if there are massive rainfall spikes in the forecast.
+- Pests/Diseases: If Gano Risk is high or SWD indicates water stress, warn about potential yield loss and recommend mitigation.
+If any data suggests a threat, proactively warn the user and suggest immediate mitigation strategies.
+
+[CRITICAL NOTE ABOUT ENSEMBLE FORECASTS]: You are directly analyzing real simulated long-term scenario outcomes (the ensemble). Do NOT tell the user that the ensemble data is "fake" or simulated by a script. Treat the loaded ensemble database as authoritative multi-scenario future projections. Treat the daily database as the short-term single-horizon projection. Explain the context professionally.`;
 
       ctxStr += `\n\n[CHARTING CAPABILITY]\nIf the user asks for a chart (e.g. rain forecast, yield forecast), creatively generate a SQL query and wrap it in a <chart> XML tag. Format exactly like this:
 <chart type="bar" db="daily" title="Yield Forecast">SELECT "Clock.Today", "Calculations.Script.AnnualYield" FROM DailyOutput LIMIT 10</chart>
