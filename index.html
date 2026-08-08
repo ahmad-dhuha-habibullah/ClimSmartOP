@@ -1124,6 +1124,12 @@
           document.getElementById('yield-chart-title').textContent = 'Yield vs Rainfall Trend';
           document.getElementById('lai-chart-title').textContent = 'Canopy LAI Trend';
           renderCharts(data);
+          apsimContextData = {
+            years: `${years[0]} - ${years[years.length - 1]}`,
+            avgYield: avgYield,
+            avgLAI: avgLAI,
+            avgRain: avgRain
+          };
         } else {
           // Check if this is the Ensemble Database
           let ensData = null;
