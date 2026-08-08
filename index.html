@@ -1150,8 +1150,27 @@
             const traceYIdxs = columns.map((c, i) => c.startsWith('Trace') && c.endsWith('Yield') ? i : -1).filter(i => i !== -1);
             const traceRIdxs = columns.map((c, i) => c.startsWith('Trace') && c.endsWith('Rain') ? i : -1).filter(i => i !== -1);
             
+            simulatedTodayDate = await getTrueTodayDate();
+            
             values.forEach(row => {
-              dates.push(row[dateIdx]);
+              const rowDateStr = typeof row[dateIdx] === 'string' ? row[dateIdx].split(' ')[0] : row[dateIdx];
+              
+              if (rowDateStr <= simulatedTodayDate) {
+                 if (myIdx !== -1) {
+                    const mY = row[myIdx];
+                    if (p10yIdx !== -1) row[p10yIdx] = mY;
+                    if (p90yIdx !== -1) row[p90yIdx] = mY;
+                    traceYIdxs.forEach(idx => row[idx] = mY);
+                 }
+                 if (mrIdx !== -1) {
+                    const mR = row[mrIdx];
+                    if (p10rIdx !== -1) row[p10rIdx] = mR;
+                    if (p90rIdx !== -1) row[p90rIdx] = mR;
+                    traceRIdxs.forEach(idx => row[idx] = mR);
+                 }
+              }
+
+              dates.push(rowDateStr);
               if (myIdx !== -1) meanYield.push(row[myIdx] * 6);
               if (p10yIdx !== -1) p10Yield.push(row[p10yIdx] * 6);
               if (p90yIdx !== -1) p90Yield.push(row[p90yIdx] * 6);
@@ -1424,27 +1443,7 @@
     }
 
     function getAnnotationConfig() {
-      if (!simulatedTodayDate) return {};
-      return {
-        annotations: {
-          todayLine: {
-            type: 'line',
-            scaleID: 'x',
-            value: simulatedTodayDate,
-            borderColor: 'rgb(239, 68, 68)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            label: {
-              content: 'TODAY',
-              display: true,
-              position: 'start',
-              backgroundColor: 'rgba(239, 68, 68, 0.9)',
-              color: 'white',
-              font: { size: 9, weight: 'bold' }
-            }
-          }
-        }
-      };
+      return {};
     }
 
     function renderCharts(data) {
@@ -1464,7 +1463,6 @@
         data: { labels, datasets: [{ label: 'Peak LAI', data: lais, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.2)', borderWidth: 2, fill: true, tension: 0.4 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, title: { display: true, text: 'LAI (m²/m²)' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
       });
-      });
     }
 
     function renderEnsembleMainDashboard(dates, meanYield, p10Yield, p90Yield, traceYIdxs, values, meanRain, p10Rain, p90Rain, traceRIdxs) {
@@ -1473,19 +1471,29 @@
       if (yieldChartInstance) yieldChartInstance.destroy();
       
       let yieldDatasets = [];
-      yieldDatasets.push({ label: 'P10', data: p10Yield, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
-      yieldDatasets.push({ label: 'P90', data: p90Yield, borderColor: 'transparent', backgroundColor: 'rgba(5, 150, 105, 0.2)', fill: '-1', pointRadius: 0, tension: 0.4 });
       
-      traceYIdxs.forEach((idx, i) => {
-        let tData = values.map(row => row[idx] * 6);
-        yieldDatasets.push({ label: `Trace${i+1}`, data: tData, borderColor: 'rgba(156, 163, 175, 0.4)', borderWidth: 1, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      // Calculate averages to rank traces
+      let traceYields = traceYIdxs.map(idx => {
+         let tData = values.map(row => row[idx] * 6);
+         let avg = tData.reduce((a,b) => a+b, 0) / tData.length;
+         return { data: tData, avg: avg };
       });
-      yieldDatasets.push({ label: 'Mean', data: meanYield, borderColor: '#3B6D11', borderWidth: 3, backgroundColor: 'transparent', fill: false, pointRadius: 1, tension: 0.4, order: 0 });
+      traceYields.sort((a, b) => b.avg - a.avg); // highest first
+
+      traceYields.forEach((t, i) => {
+         let color = 'rgba(16, 185, 129, 0.4)'; // normal (green)
+         if (i < traceYields.length / 3) color = 'rgba(59, 130, 246, 0.4)'; // basah (blue)
+         else if (i >= (traceYields.length * 2) / 3) color = 'rgba(249, 115, 22, 0.4)'; // kering (orange)
+         
+         yieldDatasets.push({ label: `Trace${i+1}`, data: t.data, borderColor: color, borderWidth: 1.5, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      });
+      
+      yieldDatasets.push({ label: 'Prediksi Median', data: meanYield, borderColor: '#1f2937', borderWidth: 2, borderDash: [5, 5], backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4, order: 0 });
 
       yieldChartInstance = new Chart(ctxY, {
         type: 'line',
         data: { labels: dates, datasets: yieldDatasets },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Yield (t/ha)' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
       });
       
       document.getElementById('lai-chart-title').textContent = 'Ensemble Rain Forecast (mm)';
@@ -1493,19 +1501,28 @@
       if (laiChartInstance) laiChartInstance.destroy();
       
       let rainDatasets = [];
-      rainDatasets.push({ label: 'P10', data: p10Rain, borderColor: 'transparent', backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
-      rainDatasets.push({ label: 'P90', data: p90Rain, borderColor: 'transparent', backgroundColor: 'rgba(59, 130, 246, 0.2)', fill: '-1', pointRadius: 0, tension: 0.4 });
       
-      traceRIdxs.forEach((idx, i) => {
-        let tData = values.map(row => row[idx]);
-        rainDatasets.push({ label: `Trace${i+1}`, data: tData, borderColor: 'rgba(156, 163, 175, 0.3)', borderWidth: 1, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      let traceRains = traceRIdxs.map(idx => {
+         let tData = values.map(row => row[idx]);
+         let avg = tData.reduce((a,b) => a+b, 0) / tData.length;
+         return { data: tData, avg: avg };
       });
-      rainDatasets.push({ label: 'Mean', data: meanRain, borderColor: '#3b82f6', borderWidth: 3, backgroundColor: 'transparent', fill: false, pointRadius: 1, tension: 0.4, order: 0 });
+      traceRains.sort((a, b) => b.avg - a.avg); // highest first
+
+      traceRains.forEach((t, i) => {
+         let color = 'rgba(16, 185, 129, 0.4)'; // normal (green)
+         if (i < traceRains.length / 3) color = 'rgba(59, 130, 246, 0.4)'; // basah (blue)
+         else if (i >= (traceRains.length * 2) / 3) color = 'rgba(249, 115, 22, 0.4)'; // kering (orange)
+         
+         rainDatasets.push({ label: `Trace${i+1}`, data: t.data, borderColor: color, borderWidth: 1.5, backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4 });
+      });
+      
+      rainDatasets.push({ label: 'Prediksi Median', data: meanRain, borderColor: '#1f2937', borderWidth: 2, borderDash: [5, 5], backgroundColor: 'transparent', fill: false, pointRadius: 0, tension: 0.4, order: 0 });
 
       laiChartInstance = new Chart(ctxR, {
         type: 'line',
         data: { labels: dates, datasets: rainDatasets },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Rain (mm)' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
       });
     }
 
@@ -1922,10 +1939,14 @@
       const toggleBtn = document.getElementById('chat-toggle-container');
       
       isChatOpen = !isChatOpen;
+      const isDesktop = window.innerWidth >= 640;
+
       if (isChatOpen) {
         win.classList.remove('translate-x-full');
-        mainBody.style.marginRight = '400px';
-        toggleBtn.classList.add('-translate-x-[400px]');
+        if (isDesktop) {
+          mainBody.style.marginRight = '400px';
+          toggleBtn.style.transform = 'translateX(-400px)';
+        }
         notif.classList.add('hidden');
         document.getElementById('chat-input').focus();
         
@@ -1937,7 +1958,7 @@
       } else {
         win.classList.add('translate-x-full');
         mainBody.style.marginRight = '0';
-        toggleBtn.classList.remove('-translate-x-[400px]');
+        toggleBtn.style.transform = 'translateX(0)';
       }
     }
 
