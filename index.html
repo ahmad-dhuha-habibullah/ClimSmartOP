@@ -1449,7 +1449,27 @@
     }
 
     function getAnnotationConfig() {
-      return {};
+      if (!simulatedTodayDate) return {};
+      return {
+        annotations: {
+          todayLine: {
+            type: 'line',
+            scaleID: 'x',
+            value: simulatedTodayDate,
+            borderColor: 'rgb(239, 68, 68)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            label: {
+              content: 'TODAY',
+              display: true,
+              position: 'start',
+              backgroundColor: 'rgba(239, 68, 68, 0.9)',
+              color: 'white',
+              font: { size: 9, weight: 'bold' }
+            }
+          }
+        }
+      };
     }
 
     function renderCharts(data) {
